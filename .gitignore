@@ -1,0 +1,30 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local runtime artifacts
+logs/
+reports/
+build/
+dist/
+*.spec
+internal_eval/logs/*.txt
+*.egg-info/
+
+# Input/output datasets can be large and machine-specific
+data/raw/
+data/processed/
+data/synthetic/
+exports/

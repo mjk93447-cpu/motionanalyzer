@@ -1,0 +1,16 @@
+---
+description: Checklist for modeling-related Python changes
+globs:
+  - "src/**/*.py"
+  - "tests/**/*.py"
+alwaysApply: false
+---
+
+# Modeling Change Checklist
+
+- Split assumptions into geometry, mechanics, and materials.
+- Keep equations consistent (`kappa`, `R`, `epsilon`) and units explicit.
+- Output diagnostics (`frame_metrics.csv`, metadata) for every synthetic run.
+- Add scenario-specific validation logic and failing messages.
+- Add/update tests for at least one positive and one negative condition.
+- Document any new parameter with physical meaning in docs.

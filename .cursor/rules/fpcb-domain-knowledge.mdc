@@ -1,0 +1,16 @@
+---
+description: Apply FPCB physics and chemistry context
+alwaysApply: true
+---
+
+# FPCB Domain Guardrails
+
+- Always model FPCB as layered organic film + copper composite.
+- Prefer physics-informed surrogates over arbitrary random trajectories.
+- Keep side-view bending progression realistic: straight -> arc -> U-like.
+- Include scenario semantics when generating data: normal, crack, pre_damage, thick_panel, uv_overcured.
+- Tie each scenario to observable metrics (final bend angle, curvature concentration, temporal response).
+- Preserve reproducibility with explicit parameters and metadata outputs.
+- When proposing thresholds, label them as provisional until secure-site calibration.
+- Never claim absolute stress/strain truth without measured material constants.
+- For production-facing decisions, emphasize limitations of 2D surrogate models.
