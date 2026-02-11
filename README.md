@@ -1,7 +1,7 @@
 # motionanalyzer
 time series motion analyzer
 
-cursor IDE 환경에서 바이브코딩을 통한 장기 물리학 패턴 분석 그래프 프로젝트
+cursor IDE 환경에서 바이브코딩을 통한 물리학기반 패턴 분석 프로그램 개발 프로젝트
 미리 바이브에 최적화된 MCP 및 디렉토리 환경구축
 아래 청사진 내용 구현에 최적화된 사전준비 및 파일 구조, MCP, cursor 파일 등을 먼저 작성하고 프로젝트를 시작해라.
 
