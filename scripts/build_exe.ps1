@@ -4,15 +4,25 @@ Param(
 
 $ErrorActionPreference = "Stop"
 
-if (-not (Test-Path $PythonExe)) {
-    throw "Python executable not found at '$PythonExe'. Run bootstrap first."
+$resolvedPython = $null
+if ($PythonExe -match "[\\/]" -or $PythonExe -match "^\.+") {
+    if (-not (Test-Path $PythonExe)) {
+        throw "Python executable not found at '$PythonExe'. Run bootstrap first."
+    }
+    $resolvedPython = $PythonExe
+} else {
+    $cmd = Get-Command $PythonExe -ErrorAction SilentlyContinue
+    if ($null -eq $cmd) {
+        throw "Python command '$PythonExe' was not found in PATH."
+    }
+    $resolvedPython = $cmd.Source
 }
 
 Write-Host "==> Installing build dependencies"
-& $PythonExe -m pip install -e ".[build]"
+& $resolvedPython -m pip install -e ".[build]"
 
 Write-Host "==> Building Windows executable with PyInstaller"
-& $PythonExe -m PyInstaller `
+& $resolvedPython -m PyInstaller `
     --noconfirm `
     --clean `
     --onefile `
