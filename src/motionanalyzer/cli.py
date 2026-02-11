@@ -47,6 +47,14 @@ def _append_txt_log(log_txt: Path | None, title: str, payload: dict[str, Any]) -
         f.write("\n".join(lines))
 
 
+@app.callback(invoke_without_command=True)
+def main(ctx: typer.Context) -> None:
+    """Render help and exit cleanly when no command is provided."""
+    if ctx.invoked_subcommand is None:
+        typer.echo(ctx.get_help())
+        raise typer.Exit(code=0)
+
+
 @app.command("doctor")
 def doctor(log_txt: Path | None = None) -> None:
     """Validate local runtime prerequisites."""

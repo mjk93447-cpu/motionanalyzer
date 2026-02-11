@@ -12,6 +12,13 @@ def test_doctor_command() -> None:
     assert "Environment looks ready" in result.stdout
 
 
+def test_no_args_shows_help_not_error() -> None:
+    runner = CliRunner()
+    result = runner.invoke(app, [])
+    assert result.exit_code == 0
+    assert "Usage:" in result.stdout
+
+
 def test_validate_synthetic_command(tmp_path: Path) -> None:
     runner = CliRunner()
     out = tmp_path / "synthetic_normal"
