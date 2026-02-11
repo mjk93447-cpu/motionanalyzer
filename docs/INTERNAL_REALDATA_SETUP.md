@@ -61,13 +61,13 @@ exe로 preflight + 분석 + 비교를 한 번에 수행:
   --run-log-txt internal_eval/logs/internal_run_latest.txt
 ```
 
-`--baseline-summary`를 비워 비교를 생략할 수 있음:
+`--baseline-summary none`으로 비교를 생략할 수 있음:
 
 ```powershell
 .\dist\motionanalyzer-cli.exe internal-realdata-run `
   --input-dir data/raw/session_real_001 `
   --output-dir exports/vectors/real_session_001 `
-  --baseline-summary "" `
+  --baseline-summary none `
   --run-log-txt internal_eval/logs/internal_run_latest.txt
 ```
 
