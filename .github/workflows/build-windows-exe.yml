@@ -37,10 +37,8 @@ jobs:
         run: |
           .\scripts\build_exe.ps1 -PythonExe "python"
 
-      - name: Upload artifacts
+      - name: Upload Windows exe artifact
         uses: actions/upload-artifact@v4
         with:
           name: motionanalyzer-windows-exe
-          path: |
-            dist/motionanalyzer-cli.exe
-            dist/motionanalyzer-gui.exe
+          path: dist/

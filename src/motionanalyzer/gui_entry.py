@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import socket
 import sys
 import tempfile
@@ -59,10 +60,15 @@ def main() -> None:
             daemon=True,
         ).start()
 
+    # Disable development mode so server.port is honored (avoid RuntimeError in packaged exe)
+    os.environ["STREAMLIT_GLOBAL_DEVELOPMENTMODE"] = "false"
+
     sys.argv = [
         "streamlit",
         "run",
         str(app_script),
+        "--global.developmentMode",
+        "false",
         "--server.address",
         args.host,
         "--server.port",
