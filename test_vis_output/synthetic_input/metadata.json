@@ -1,0 +1,37 @@
+{
+  "config": {
+    "frames": 30,
+    "points_per_frame": 50,
+    "fps": 30.0,
+    "width": 1920,
+    "height": 1080,
+    "panel_length_px": 230.0,
+    "panel_thickness_um": 90.0,
+    "pixels_per_mm": 10.0,
+    "noise_std": 0.8,
+    "seed": 42,
+    "scenario": "normal"
+  },
+  "assumptions": [
+    "epsilon ~= t/(2R) strain approximation for bending.",
+    "Crack/pre-damage modeled as local stiffness loss causing curvature concentration.",
+    "Thick panel modeled as increased effective stiffness and lower final bend angle.",
+    "UV over-cure modeled as delayed response and late-stage snap tendency."
+  ],
+  "scenario_params": {
+    "final_angle_ratio": 1.0,
+    "response_alpha": 0.2,
+    "damping": 0.96,
+    "crack_gain": 0.0,
+    "crack_center_ratio": 0.65,
+    "crack_width_ratio": 0.05,
+    "uv_delay_ratio": 0.0,
+    "uv_snap_gain": 0.0,
+    "pre_damage_skew": 0.0
+  },
+  "outputs": {
+    "frames_glob": "frame_*.txt",
+    "fps_file": "fps.txt",
+    "frame_metrics_file": "frame_metrics.csv"
+  }
+}

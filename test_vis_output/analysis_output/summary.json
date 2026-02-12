@@ -1,0 +1,14 @@
+{
+  "fps": 30.0,
+  "frame_count": 30,
+  "point_count_per_frame_min": 50,
+  "point_count_per_frame_max": 50,
+  "unique_index_count": 50,
+  "mean_speed": 131.49902957040288,
+  "max_speed": 576.2811813689564,
+  "mean_acceleration": 2354.5865434099937,
+  "max_acceleration": 7029.224708315989,
+  "mean_curvature_like": 1570013.351069211,
+  "p95_curvature_like": 3.162277554759127,
+  "max_curvature_like": 120000000.0
+}

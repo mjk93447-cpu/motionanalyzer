@@ -1,0 +1,13 @@
+motionanalyzer summary
+fps=30.0
+frame_count=30
+point_count_per_frame_min=50
+point_count_per_frame_max=50
+unique_index_count=50
+mean_speed=131.499030
+max_speed=576.281181
+mean_acceleration=2354.586543
+max_acceleration=7029.224708
+mean_curvature_like=1570013.351069
+p95_curvature_like=3.162278
+max_curvature_like=120000000.000000
