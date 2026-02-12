@@ -35,11 +35,11 @@ Write-Host "==> Building Windows executable with PyInstaller"
     src\motionanalyzer\cli.py
 
 Write-Host "==> Building GUI Windows executable (offline local Streamlit launcher)"
+Write-Host "Note: Building with console window enabled for error visibility"
 & $resolvedPython -m PyInstaller `
     --noconfirm `
     --clean `
     --onefile `
-    --noconsole `
     --name motionanalyzer-gui `
     --collect-all streamlit `
     --exclude-module tensorflow `
