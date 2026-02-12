@@ -32,13 +32,13 @@ jobs:
         run: |
           python -m pytest
 
-      - name: Build exe
+      - name: Build Windows offline GUI exe
         shell: powershell
         run: |
           .\scripts\build_exe.ps1 -PythonExe "python"
 
-      - name: Upload Windows exe artifact
+      - name: Upload Windows GUI exe artifact
         uses: actions/upload-artifact@v4
         with:
           name: motionanalyzer-windows-exe
-          path: dist/
+          path: dist/motionanalyzer-gui.exe

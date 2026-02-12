@@ -15,7 +15,9 @@ from pathlib import Path
 
 from streamlit.web import cli as stcli
 
-# Setup logging for packaged exe
+from motionanalyzer import gui as _gui_mod  # noqa: F401
+
+# Setup logging for packaged exe (for offline Windows exe)
 _log_file = Path.home() / "motionanalyzer_gui.log"
 logging.basicConfig(
     level=logging.INFO,
