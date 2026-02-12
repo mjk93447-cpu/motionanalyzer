@@ -48,6 +48,7 @@ class MotionAnalyzerApp(tk.Tk):
 
         self.input_dir_var = tk.StringVar(value=DEFAULT_INPUT_DIR)
         self.output_dir_var = tk.StringVar(value=DEFAULT_OUTPUT_DIR)
+        self.fps_var = tk.StringVar(value="30.0")
 
         # Input dir
         row = ttk.Frame(input_frame)
@@ -64,6 +65,13 @@ class MotionAnalyzerApp(tk.Tk):
         entry_out = ttk.Entry(row2, textvariable=self.output_dir_var, width=80)
         entry_out.pack(side=tk.LEFT, padx=4, fill=tk.X, expand=True)
         ttk.Button(row2, text="Browse...", command=self._browse_output_dir).pack(side=tk.LEFT)
+
+        # FPS
+        row3 = ttk.Frame(input_frame)
+        row3.pack(fill=tk.X, padx=8, pady=4)
+        ttk.Label(row3, text="FPS (frames per second):").pack(side=tk.LEFT)
+        entry_fps = ttk.Entry(row3, textvariable=self.fps_var, width=10)
+        entry_fps.pack(side=tk.LEFT, padx=4)
 
         # Run button
         btn_frame = ttk.Frame(parent)
@@ -187,32 +195,23 @@ class MotionAnalyzerApp(tk.Tk):
         input_dir = Path(self.input_dir_var.get()).expanduser()
         output_dir = Path(self.output_dir_var.get()).expanduser()
 
-        # Basic validations to avoid FileNotFoundError from analysis.load_bundle
         if not input_dir.exists():
             messagebox.showerror("Error", f"Input path not found:\n{input_dir}")
             return
 
-        fps_file = input_dir / "fps.txt"
-        if not fps_file.exists():
-            messagebox.showerror(
-                "Error",
-                f"fps.txt not found in:\n{input_dir}\n\n"
-                "Please make sure the bundle contains fps.txt with a single fps value.",
-            )
+        # FPS from user input (required for GUI; fps.txt is optional/ignored here)
+        try:
+            fps_val = float(self.fps_var.get())
+        except ValueError:
+            messagebox.showerror("Error", "FPS must be a positive number.")
             return
-
-        frame_files = list(input_dir.glob("frame_*.txt"))
-        if not frame_files:
-            messagebox.showerror(
-                "Error",
-                f"No frame_*.txt files found in:\n{input_dir}\n\n"
-                "Expected frame_0001.txt style files for each frame.",
-            )
+        if fps_val <= 0:
+            messagebox.showerror("Error", "FPS must be a positive number.")
             return
 
         try:
             self._append_log(f"Running analysis...\n  input={input_dir}\n  output={output_dir}")
-            summary = run_analysis(input_dir=input_dir, output_dir=output_dir)
+            summary = run_analysis(input_dir=input_dir, output_dir=output_dir, fps=fps_val)
             self._append_log("Analysis complete.")
             self._render_summary(summary)
             messagebox.showinfo(

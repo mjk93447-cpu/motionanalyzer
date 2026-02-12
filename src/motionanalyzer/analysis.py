@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -48,27 +49,66 @@ def _read_single_frame(path: Path, frame_idx: int) -> pd.DataFrame:
     return pd.DataFrame.from_records(records)
 
 
-def load_bundle(input_dir: Path) -> tuple[pd.DataFrame, float]:
-    fps_file = input_dir / "fps.txt"
-    if not fps_file.exists():
-        raise FileNotFoundError(f"fps.txt not found in {input_dir}")
-    fps = float(fps_file.read_text(encoding="utf-8").strip())
-    if fps <= 0:
+def _extract_frame_index(path: Path) -> int | None:
+    """
+    Extract frame index from filename.
+
+    Preferred rule (for real data):
+      - Find a number that starts with "000" and has 5~6 digits total,
+        e.g. 00001, 000001, 000123.
+
+    Fallback (for legacy/test data):
+      - Use any digits from the stem (e.g. frame_00000.txt -> 0).
+    """
+    match = re.search(r"000\d{2,3}", path.name)
+    if match is not None:
+        return int(match.group(0))
+
+    # Legacy fallback: digits from stem
+    stem_digits = "".join(ch for ch in path.stem if ch.isdigit())
+    if stem_digits:
+        return int(stem_digits)
+    return None
+
+
+def load_bundle(input_dir: Path, fps: float | None = None) -> tuple[pd.DataFrame, float]:
+    """
+    Load bundle of frame_*.txt-like files from input_dir.
+
+    fps:
+        - When provided, use this value directly (no fps.txt required).
+        - When None, fall back to legacy behavior that reads fps.txt.
+    """
+    if fps is None:
+        fps_file = input_dir / "fps.txt"
+        if not fps_file.exists():
+            raise FileNotFoundError(f"fps.txt not found in {input_dir}")
+        fps_val = float(fps_file.read_text(encoding="utf-8").strip())
+    else:
+        fps_val = fps
+    if fps_val <= 0:
         raise ValueError("fps must be > 0")
 
-    frame_files = sorted(input_dir.glob("frame_*.txt"))
-    if not frame_files:
-        raise FileNotFoundError(f"No frame_*.txt found in {input_dir}")
+    # Collect all frame files based on 6-digit index pattern (000xxx) in filename.
+    candidates = [p for p in input_dir.glob("*.txt") if p.name.lower() != "fps.txt"]
+    indexed_files: list[tuple[int, Path]] = []
+    for path in candidates:
+        idx = _extract_frame_index(path)
+        if idx is not None:
+            indexed_files.append((idx, path))
+
+    if not indexed_files:
+        raise FileNotFoundError(f"No frame files with 6-digit index (000xxx) found in {input_dir}")
+
+    indexed_files.sort(key=lambda item: item[0])
 
     frames: list[pd.DataFrame] = []
-    for frame_file in frame_files:
-        stem_digits = "".join(ch for ch in frame_file.stem if ch.isdigit())
-        frame_idx = int(stem_digits) if stem_digits else len(frames)
+    for frame_idx, frame_file in indexed_files:
         frames.append(_read_single_frame(frame_file, frame_idx=frame_idx))
 
     df = pd.concat(frames, ignore_index=True)
     df = df.sort_values(["index", "frame"]).reset_index(drop=True)
-    return df, fps
+    return df, fps_val
 
 
 def compute_vectors(df: pd.DataFrame, fps: float) -> pd.DataFrame:
@@ -164,10 +204,10 @@ def export_analysis(vectors: pd.DataFrame, summary: AnalysisSummary, output_dir:
     summary_txt_path.write_text("\n".join(txt_lines) + "\n", encoding="utf-8")
 
 
-def run_analysis(input_dir: Path, output_dir: Path) -> AnalysisSummary:
-    df, fps = load_bundle(input_dir)
-    vectors = compute_vectors(df=df, fps=fps)
-    summary = summarize(vectors=vectors, fps=fps)
+def run_analysis(input_dir: Path, output_dir: Path, fps: float | None = None) -> AnalysisSummary:
+    df, fps_val = load_bundle(input_dir=input_dir, fps=fps)
+    vectors = compute_vectors(df=df, fps=fps_val)
+    summary = summarize(vectors=vectors, fps=fps_val)
     export_analysis(vectors=vectors, summary=summary, output_dir=output_dir)
     return summary
 
