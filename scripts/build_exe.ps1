@@ -21,20 +21,21 @@ if ($PythonExe -match "[\\/]" -or $PythonExe -match "^\.+") {
 Write-Host "==> Installing build dependencies"
 & $resolvedPython -m pip install -e ".[build]"
 
-Write-Host "==> Building offline Windows GUI executable with PyInstaller"
-Write-Host "Note: Only GUI exe is built for offline use"
+Write-Host "==> Building offline Windows desktop GUI executable with PyInstaller"
+Write-Host "Note: Only native Windows GUI exe is built for offline use"
 & $resolvedPython -m PyInstaller `
     --noconfirm `
     --clean `
     --onefile `
     --name motionanalyzer-gui `
-    --collect-all streamlit `
+    --windowed `
     --exclude-module tensorflow `
     --exclude-module keras `
     --exclude-module torch `
     --exclude-module PySide6 `
     --exclude-module pytest `
-    src\motionanalyzer\gui_entry.py
+    --exclude-module streamlit `
+    src\motionanalyzer\desktop_gui.py
 
 Write-Host "Build complete:"
 Write-Host " - dist\motionanalyzer-gui.exe"
