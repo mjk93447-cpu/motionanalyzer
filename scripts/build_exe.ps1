@@ -27,7 +27,27 @@ Write-Host "==> Building Windows executable with PyInstaller"
     --clean `
     --onefile `
     --name motionanalyzer-cli `
-    --collect-all motionanalyzer `
+    --exclude-module tensorflow `
+    --exclude-module keras `
+    --exclude-module torch `
+    --exclude-module PySide6 `
+    --exclude-module pytest `
     src\motionanalyzer\cli.py
 
-Write-Host "Build complete: dist\motionanalyzer-cli.exe"
+Write-Host "==> Building GUI Windows executable (offline local Streamlit launcher)"
+& $resolvedPython -m PyInstaller `
+    --noconfirm `
+    --clean `
+    --onefile `
+    --noconsole `
+    --name motionanalyzer-gui `
+    --collect-all streamlit `
+    --exclude-module tensorflow `
+    --exclude-module keras `
+    --exclude-module torch `
+    --exclude-module PySide6 `
+    src\motionanalyzer\gui_entry.py
+
+Write-Host "Build complete:"
+Write-Host " - dist\motionanalyzer-cli.exe"
+Write-Host " - dist\motionanalyzer-gui.exe"

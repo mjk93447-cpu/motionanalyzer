@@ -133,7 +133,12 @@ pytest
 .\scripts\build_exe.ps1
 ```
 
-GitHub에서는 `.github/workflows/build-windows-exe.yml`가 `motionanalyzer-cli.exe` 아티팩트를 생성합니다.
+생성 파일:
+
+- `dist/motionanalyzer-cli.exe` (CLI)
+- `dist/motionanalyzer-gui.exe` (오프라인 로컬 GUI 런처)
+
+GitHub에서는 `.github/workflows/build-windows-exe.yml`가 위 두 exe를 아티팩트로 생성합니다.
 
 ## FPCB 벤딩 합성데이터 고도화
 
@@ -183,7 +188,14 @@ motionanalyzer validate-synthetic --input-dir data/synthetic/crack_case --scenar
 
 ```powershell
 .\scripts\run_gui.ps1
+# 또는 빌드된 GUI exe 실행
+.\dist\motionanalyzer-gui.exe --host 127.0.0.1 --port 8501
 ```
+
+GUI 기본 설계 기준:
+- 해상도 프로파일: 1920x1080 (Full HD)
+- 화면 폭: 최대 1920px 고정 레이아웃
+- 오프라인 로컬 실행: Streamlit 서버를 로컬에서만 기동
 
 - CLI 분석:
 
