@@ -52,4 +52,4 @@ GitHub Actions에서 생성되는 exe 파일의 기능을 개선하여, Run Anal
 - [x] velocity / acceleration 화살표 구분 (색상·두께 상이)
 - [x] max impact 영역 및 crack probability 주석
 - [x] summary에 단위 표시 (mean_speed_px_s, max_acceleration_px_s2 등)
-- [ ] 버전업 후 main 브랜치 푸시, GitHub Actions exe 빌드
+- [x] 버전업 후 main 브랜치 푸시, GitHub Actions exe 빌드 (v0.2.0)
