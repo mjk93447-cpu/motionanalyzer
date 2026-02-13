@@ -12,6 +12,7 @@ from motionanalyzer.analysis import (
     load_summary,
     run_analysis,
 )
+from motionanalyzer.visualization import create_vector_map_figure
 
 DEFAULT_INPUT_DIR = "data/synthetic/normal_case"
 DEFAULT_OUTPUT_DIR = "exports/vectors/normal_case"
@@ -85,13 +86,20 @@ class MotionAnalyzerApp(tk.Tk):
         # Summary display
         summary_frame = ttk.LabelFrame(parent, text="Summary")
         summary_frame.pack(fill=tk.X, padx=8, pady=4)
-        self.summary_text = tk.Text(summary_frame, height=10, wrap=tk.NONE)
+        self.summary_text = tk.Text(summary_frame, height=8, wrap=tk.NONE)
         self.summary_text.pack(fill=tk.BOTH, expand=True)
+
+        # Vector map display (zoom/pan enabled)
+        self.vector_map_frame = ttk.LabelFrame(parent, text="Vector Map (zoom/pan with toolbar)")
+        self.vector_map_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
+        self._vector_map_canvas: Any = None
+        self._vector_map_toolbar: Any = None
+        self._vector_map_fig: Any = None
 
         # Log area
         log_frame = ttk.LabelFrame(parent, text="Log")
         log_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
-        self.log_text = tk.Text(log_frame, height=10, wrap=tk.NONE)
+        self.log_text = tk.Text(log_frame, height=6, wrap=tk.NONE)
         self.log_text.pack(fill=tk.BOTH, expand=True)
 
     def _build_compare_tab(self, parent: tk.Widget) -> None:
@@ -168,6 +176,32 @@ class MotionAnalyzerApp(tk.Tk):
         self.log_text.insert(tk.END, msg + "\n")
         self.log_text.see(tk.END)
 
+    def _clear_vector_map(self) -> None:
+        for w in self.vector_map_frame.winfo_children():
+            w.destroy()
+        if self._vector_map_fig is not None:
+            import matplotlib.pyplot as plt
+            plt.close(self._vector_map_fig)
+            self._vector_map_fig = None
+        self._vector_map_canvas = None
+        self._vector_map_toolbar = None
+
+    def _show_vector_map(self, vectors_csv: Path, fps: float) -> None:
+        self._clear_vector_map()
+        try:
+            from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+            fig = create_vector_map_figure(vectors_csv, fps)
+            self._vector_map_fig = fig
+            canvas = FigureCanvasTkAgg(fig, master=self.vector_map_frame)
+            canvas.draw()
+            toolbar = NavigationToolbar2Tk(canvas, self.vector_map_frame)
+            toolbar.update()
+            canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+            self._vector_map_canvas = canvas
+            self._vector_map_toolbar = toolbar
+        except Exception as exc:  # pragma: no cover
+            self._append_log(f"Vector map display failed: {exc}")
+
     def _clear_summary(self) -> None:
         self.summary_text.delete("1.0", tk.END)
 
@@ -214,9 +248,13 @@ class MotionAnalyzerApp(tk.Tk):
             summary = run_analysis(input_dir=input_dir, output_dir=output_dir, fps=fps_val)
             self._append_log("Analysis complete.")
             self._render_summary(summary)
+            vectors_csv = output_dir / "vectors.csv"
+            if vectors_csv.exists():
+                self._show_vector_map(vectors_csv, fps_val)
             messagebox.showinfo(
                 "Success",
-                f"Analysis complete.\n\nOutput directory:\n{output_dir}",
+                f"Analysis complete.\n\nOutput directory:\n{output_dir}\n"
+                f"Includes: vectors.csv, vector_map.png, summary.json",
             )
         except Exception as exc:  # pragma: no cover - defensive, surfaced via GUI
             tb = traceback.format_exc()

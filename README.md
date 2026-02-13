@@ -38,11 +38,14 @@ Time-series motion analyzer for physics-based pattern analysis.
 - 속도 벡터
 - 가속도 벡터
 
-를 표준화된 txt 또는 csv로 내보낸 결과물.
+를 표준화된 txt 또는 csv로 내보낸 결과물. Run Analysis 시 다음 파일이 생성된다:
+- `vectors.csv`, `vectors.txt`: 프레임별 속도·가속도 벡터 (단위: px/s, px/s²)
+- `summary.json`, `summary.txt`: 요약 통계 (단위 명시)
+- `vector_map.png`: 속도·가속도 화살표 및 max impact, crack probability 시각화
 
 ### Output 2
 
-Output 1 결과를 시각화/비교 분석하는 GUI.
+Output 1 결과를 시각화/비교 분석하는 GUI. Run Analysis 후 벡터맵을 줌/팬 가능한 뷰어로 표시.
 - 패턴 해석 보조
 - 여러 비디오 결과 동시 비교
 - 차이점/특이점 탐색

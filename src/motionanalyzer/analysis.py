@@ -153,10 +153,16 @@ def summarize(vectors: pd.DataFrame, fps: float) -> AnalysisSummary:
 
 
 def export_analysis(vectors: pd.DataFrame, summary: AnalysisSummary, output_dir: Path) -> None:
+    from motionanalyzer.visualization import plot_full_vector_map
+
     output_dir.mkdir(parents=True, exist_ok=True)
 
     csv_path = output_dir / "vectors.csv"
     vectors.to_csv(csv_path, index=False)
+
+    # Vector map image (velocity + acceleration, units, max impact, crack prob)
+    image_path = output_dir / "vector_map.png"
+    plot_full_vector_map(csv_path, image_path, fps=summary.fps)
 
     # Standardized txt output for process integration.
     txt_path = output_dir / "vectors.txt"
@@ -185,18 +191,20 @@ def export_analysis(vectors: pd.DataFrame, summary: AnalysisSummary, output_dir:
         json.dumps(asdict(summary), ensure_ascii=True, indent=2), encoding="utf-8"
     )
 
+    # Summary txt with units (px/s, px/s²)
     summary_txt_path = output_dir / "summary.txt"
     txt_lines = [
-        "motionanalyzer summary",
+        "motionanalyzer summary (units: speed/accel in px/s, px/s²)",
         f"fps={summary.fps}",
+        f"dt_s={1.0/summary.fps:.6f}",
         f"frame_count={summary.frame_count}",
         f"point_count_per_frame_min={summary.point_count_per_frame_min}",
         f"point_count_per_frame_max={summary.point_count_per_frame_max}",
         f"unique_index_count={summary.unique_index_count}",
-        f"mean_speed={summary.mean_speed:.6f}",
-        f"max_speed={summary.max_speed:.6f}",
-        f"mean_acceleration={summary.mean_acceleration:.6f}",
-        f"max_acceleration={summary.max_acceleration:.6f}",
+        f"mean_speed_px_s={summary.mean_speed:.6f}",
+        f"max_speed_px_s={summary.max_speed:.6f}",
+        f"mean_acceleration_px_s2={summary.mean_acceleration:.6f}",
+        f"max_acceleration_px_s2={summary.max_acceleration:.6f}",
         f"mean_curvature_like={summary.mean_curvature_like:.6f}",
         f"p95_curvature_like={summary.p95_curvature_like:.6f}",
         f"max_curvature_like={summary.max_curvature_like:.6f}",
