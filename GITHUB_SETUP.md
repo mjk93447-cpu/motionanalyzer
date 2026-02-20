@@ -19,6 +19,11 @@ git remote add origin https://github.com/YOUR_USERNAME/motionanalyzer.git
 git push -u origin main
 ```
 
+또는 GitHub CLI 사용 시:
+```powershell
+gh repo create motionanalyzer --private --source=. --push
+```
+
 ## 3. GitHub Actions (EXE 빌드)
 
 푸시 후 `.github/workflows/build-windows-exe.yml`이 자동 실행됩니다.
