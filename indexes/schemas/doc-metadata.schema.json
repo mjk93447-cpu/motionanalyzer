@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DocumentMetadata",
+  "type": "object",
+  "required": ["id", "path", "kind", "title", "canonical", "status"],
+  "properties": {
+    "id": { "type": "string" },
+    "path": { "type": "string" },
+    "kind": { "type": "string", "enum": ["doc", "report", "artifact", "code"] },
+    "title": { "type": "string" },
+    "canonical": { "type": "boolean" },
+    "status": { "type": "string", "enum": ["active", "archived", "superseded"] },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "related": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

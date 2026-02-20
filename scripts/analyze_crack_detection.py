@@ -119,7 +119,7 @@ def _run_evaluation_and_get_predictions(max_train: int | None = None) -> tuple[d
         normalize_features,
         prepare_training_data,
     )
-    from motionanalyzer.gui.runners import _run_dream, _run_patchcore
+    from motionanalyzer.services.ml_training import run_dream_training, run_patchcore_training
     from sklearn.metrics import (confusion_matrix, precision_recall_curve, roc_auc_score)
 
     def log(_: str) -> None:
@@ -188,7 +188,7 @@ def _run_evaluation_and_get_predictions(max_train: int | None = None) -> tuple[d
         batch_size = 32
 
     # DREAM
-    res = _run_dream(
+    res = run_dream_training(
         pd.DataFrame(X_train, columns=feature_cols),
         y_train,
         log=log,
@@ -221,7 +221,7 @@ def _run_evaluation_and_get_predictions(max_train: int | None = None) -> tuple[d
         }
 
     # PatchCore
-    res = _run_patchcore(
+    res = run_patchcore_training(
         pd.DataFrame(X_train, columns=feature_cols),
         y_train,
         log=log,

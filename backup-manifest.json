@@ -1,0 +1,943 @@
+{
+  "generated_at_utc": "2026-02-20T11:46:54.515934Z",
+  "branch": "main",
+  "commit": "1a20e6390af0e48308813be52909a1f83f4ab05f",
+  "file_count": 187,
+  "files": [
+    {
+      "path": ".cursor/mcp.json",
+      "size_bytes": 163,
+      "sha256": "5e57d90e50564d22892319e842d34224eada93b97519c7cd4fc107f5be10d98f"
+    },
+    {
+      "path": ".cursor/rules/cursor-tools-optimization.mdc",
+      "size_bytes": 648,
+      "sha256": "c11921bf10700bc015067c3794cda84c88a470a303a1efd87f992802dc97d3cc"
+    },
+    {
+      "path": ".cursor/rules/fpcb-domain-knowledge.mdc",
+      "size_bytes": 1477,
+      "sha256": "a5a81e221e47fd70311bf9072cc8d95a9acaca5fca4cf6fe90cd106b4cc46560"
+    },
+    {
+      "path": ".cursor/rules/fpcb-modeling-checklist.mdc",
+      "size_bytes": 586,
+      "sha256": "be73622573c10b22fc8b17b29bc510cb01c945fbf0eb1776c5982f56bcaccf5f"
+    },
+    {
+      "path": ".cursor/rules/motionanalyzer.mdc",
+      "size_bytes": 686,
+      "sha256": "55f0fe0b1145aa81143a55e04f9789b7c86a188cc8df91f1c2a67750928747c7"
+    },
+    {
+      "path": ".cursor/skills/ai-coding-accelerator/SKILL.md",
+      "size_bytes": 1727,
+      "sha256": "b7fce37c5d653bfd8cae8f0b8dc0d54501382a965df997fbb48909a6d9db04f4"
+    },
+    {
+      "path": ".cursor/worktrees.json",
+      "size_bytes": 48,
+      "sha256": "bcbb830af87909a7acfdbf2d8b7638df77c8b2d97baf692d6193d3b1f13b437c"
+    },
+    {
+      "path": ".cursorignore",
+      "size_bytes": 139,
+      "sha256": "da0768dd6fff99690b0d508f1d4b68b204bb8b7ad594829dca6734db5675534e"
+    },
+    {
+      "path": ".github/workflows/build-windows-exe.yml",
+      "size_bytes": 1268,
+      "sha256": "0c31441de8633275794cd6a3bb609199160d9592a9d8a1bf30ab97b85b3ec6f6"
+    },
+    {
+      "path": ".gitignore",
+      "size_bytes": 881,
+      "sha256": "fb331ce9b3125253f7c406d79d49e379ebf252187c9ad966875849eb6fede0ef"
+    },
+    {
+      "path": ".pre-commit-config.yaml",
+      "size_bytes": 519,
+      "sha256": "972981d7b144534a711fd1a48b2380a05cc56898a7644fd48acc9d9a94a8ac31"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "size_bytes": 3714,
+      "sha256": "2a3c9068b153b1ee87d29359a140433d2347c2ef58ed32680619dcefe5354fc2"
+    },
+    {
+      "path": "GITHUB_SETUP.md",
+      "size_bytes": 1370,
+      "sha256": "29a3e1698829465c707e651dcba7d7c883613174069ace99e1e38db21f100f76"
+    },
+    {
+      "path": "README.md",
+      "size_bytes": 17528,
+      "sha256": "b3b5a0414755ab51ce82bfe1a03907715f619bae5afcdad88ff7cef02d59cd7d"
+    },
+    {
+      "path": "RELEASE_INSTRUCTIONS.md",
+      "size_bytes": 2577,
+      "sha256": "e06be36dbb5435d96ef9560f17acef77af905dd94512f71a92be2e2ef8fe9bb8"
+    },
+    {
+      "path": "RELEASE_NOTES_v0.2.0.md",
+      "size_bytes": 5279,
+      "sha256": "c77dc9398c54317067e03966b1c253092b9dfaa01eb95cf9196f2cd75bdc04fa"
+    },
+    {
+      "path": "configs/crack_model_default.json",
+      "size_bytes": 312,
+      "sha256": "88c9bec199a5984eb15353471d458467a4ef00a9b9c1ecce3e24d2c8c8a1f3bb"
+    },
+    {
+      "path": "configs/internal_eval.template.json",
+      "size_bytes": 520,
+      "sha256": "d4342de899e427d4aa0e543ed01330c9fbbbb3341c2562ef6d49df1e85993e04"
+    },
+    {
+      "path": "docs/AI_MODELING_PLAYBOOK.md",
+      "size_bytes": 1603,
+      "sha256": "f6db5c4d8290ca31e802fc474db9f953802c30f116cf95683ef75a632599711e"
+    },
+    {
+      "path": "docs/ANALYSIS_SCENARIOS_AND_OUTPUT_EVALUATION.md",
+      "size_bytes": 9875,
+      "sha256": "3e9cb64858c9fa58ed9cce7d8c50a394955ff64c4881e3f0b550a637c31d5b6e"
+    },
+    {
+      "path": "docs/BLUEPRINT_SETUP_CHECKLIST.md",
+      "size_bytes": 1259,
+      "sha256": "631d2d9844d821183545e8c30aee4ca6fbd5218563ec2bf62a5b58034ede2a24"
+    },
+    {
+      "path": "docs/CHANGEPOINT_DETECTION.md",
+      "size_bytes": 5617,
+      "sha256": "91e44945a03babe9f3359001f090f2c46ed598c36b7af6bcad6dc0b96b1abed4"
+    },
+    {
+      "path": "docs/CRACK_DETECTION_ROADMAP.md",
+      "size_bytes": 34146,
+      "sha256": "11da57e9ea9d1dffac91d1867389dafa4679998c401121fe0fd3283f165c1a0d"
+    },
+    {
+      "path": "docs/CURRENT_STATUS.md",
+      "size_bytes": 3152,
+      "sha256": "4f06147f0ff217d449b581e05cd755227ff209e5991bd27d135ba6cc03b43402"
+    },
+    {
+      "path": "docs/DEVELOPMENT_PRIORITIES.md",
+      "size_bytes": 10203,
+      "sha256": "ca332604abbfad72c6e1ec7893128eae67fb0f016bc01542e09619dc323a1e02"
+    },
+    {
+      "path": "docs/DEVELOPMENT_PRIORITIES_SYNTHETIC_FIRST.md",
+      "size_bytes": 13809,
+      "sha256": "fe9c5998cb345d4d96645ac8113262761333b01980de8d46ebf787150e1ddea8"
+    },
+    {
+      "path": "docs/DEVELOPMENT_ROADMAP_FINAL.md",
+      "size_bytes": 24127,
+      "sha256": "7921a6154dbf8c630248c461b992e9c81f1cfe55e28cff7080f2e861ff48ef30"
+    },
+    {
+      "path": "docs/DEVELOPMENT_STRATEGY_AND_WORK_ORDER.md",
+      "size_bytes": 6557,
+      "sha256": "921cc7dd7a4a78c414693c45359f9302a2b77e547fc49e41e5d83007fa4005fa"
+    },
+    {
+      "path": "docs/DREAM_CRACK_LIKE_ANOMALY.md",
+      "size_bytes": 4767,
+      "sha256": "88ae29ed85c5663f94987493e48e49ad18b1afbd39eeede5ebb7547012ea0dd1"
+    },
+    {
+      "path": "docs/DREAM_DRAEM_REFERENCE.md",
+      "size_bytes": 2626,
+      "sha256": "40d7118c7cf5256e5fad62424ff12f1ac0b6e1381c9c2e5b31733ad055136f26"
+    },
+    {
+      "path": "docs/DREAM_FEWSHOT_REAL_STRATEGY.md",
+      "size_bytes": 4466,
+      "sha256": "b4064c9a7647147a6de14aab1dcec382a02c478d968ab72e57e5606668873d6b"
+    },
+    {
+      "path": "docs/EXE_LOCAL_TEST_GUIDE.md",
+      "size_bytes": 5373,
+      "sha256": "221f835ff07c8195acc512c781e4c614e666c3ed9a7d65632ec3e14a9793c3e7"
+    },
+    {
+      "path": "docs/FINAL_SUMMARY_PRE_RELEASE.md",
+      "size_bytes": 6889,
+      "sha256": "3a09e752801ceba9dd038fb24bad1895001b40e191412de15511402c6f0cc373"
+    },
+    {
+      "path": "docs/GPU_REMOTE_STRATEGY.md",
+      "size_bytes": 5439,
+      "sha256": "64a750d145234f616ed0f3cdf8e0dd9a4ab4c6c5087f81a47186dcb4b4bf5225"
+    },
+    {
+      "path": "docs/GPU_TODO_LIST.md",
+      "size_bytes": 3326,
+      "sha256": "37700f5f761cc0a14338d1e7e4913fd5d72c64d35ae440949529cdaadd1345f0"
+    },
+    {
+      "path": "docs/GUI_ARCHITECTURE.md",
+      "size_bytes": 6196,
+      "sha256": "feb0f3f865f937fc07a25c99344002a16807716d6e726ad975d6d617df72b55e"
+    },
+    {
+      "path": "docs/GUI_TEST_SCENARIOS_REPORT.md",
+      "size_bytes": 4295,
+      "sha256": "f2618a92aa5cbe47216dc3283062d36e560f3dad5c58fc56445cd407c163b0a5"
+    },
+    {
+      "path": "docs/IMPLEMENTATION_STATUS.md",
+      "size_bytes": 6368,
+      "sha256": "1b2a4fa00eee09a1ee8afebda7f8cdf5947b2477a5e4e96cd45262c087652b68"
+    },
+    {
+      "path": "docs/INTERNAL_REALDATA_SETUP.md",
+      "size_bytes": 2237,
+      "sha256": "2da4cdd9a5ea653d3981ca419763f1381fd84d7287f9b3e235d5db6864a5e664"
+    },
+    {
+      "path": "docs/INTERNAL_REALDATA_TEST_SCENARIOS.md",
+      "size_bytes": 3766,
+      "sha256": "406cf3d709b020fa6eb6d1c3e5ed4c6d77c829e9f91878f77e3972ab50672e27"
+    },
+    {
+      "path": "docs/JUPYTER_GPU_SETUP.md",
+      "size_bytes": 2135,
+      "sha256": "8bc9e3e554aff5c0c18e8e09a4a9635be986b360afae48f1f5d2dc668740e1ec"
+    },
+    {
+      "path": "docs/KNOWLEDGE_FPCB_PHYSICS_CHEMISTRY.md",
+      "size_bytes": 3335,
+      "sha256": "d1ea16bfd0105ee78dbb6b80dcb71957d16b92cef3a043064e5244f4102735d8"
+    },
+    {
+      "path": "docs/ML_GPU_ACCELERATION_STRATEGY.md",
+      "size_bytes": 3825,
+      "sha256": "45284f71f22f5835e89af767549c18c0471604e9a4ad99fbe84745fbf5e9f7f0"
+    },
+    {
+      "path": "docs/ML_SYNTHETIC_DATA_GUIDE.md",
+      "size_bytes": 2579,
+      "sha256": "fd5dca678e4b3c426d90d06e9ec77885df10786d1c6128c87892dfba4ec68c22"
+    },
+    {
+      "path": "docs/OFFICE_PC_WORKFLOW.md",
+      "size_bytes": 1878,
+      "sha256": "9982b232fe30f2053623a551bb6a99a622ed050ada1eb06d33d37fce7ed225f9"
+    },
+    {
+      "path": "docs/PHASE2_EXECUTION_RUNBOOK.md",
+      "size_bytes": 1700,
+      "sha256": "bc526c818ef8a0d2b4224fd860b692330bfc88dc697c4fcaa0bd85d12c7de802"
+    },
+    {
+      "path": "docs/PHASE2_ML_REVIEW.md",
+      "size_bytes": 6991,
+      "sha256": "e7015b52228c0619324e06636996da73b8c6396a15dad9a3d3756eaf29e33cec"
+    },
+    {
+      "path": "docs/PHASE_B_INSIGHTS.md",
+      "size_bytes": 9283,
+      "sha256": "28b4e18cae65b49cf19bde50442fb049d91d3c577b100e9bfbab8ee0d23a975a"
+    },
+    {
+      "path": "docs/PIPELINE_SETUP_COMPLETE.md",
+      "size_bytes": 2189,
+      "sha256": "d144c7e3ebee888cfa77e639c9f69c03f78bbc78b4559474a6a20ef4c4e9cb06"
+    },
+    {
+      "path": "docs/PRE_RELEASE_CHECKLIST.md",
+      "size_bytes": 3216,
+      "sha256": "c669db7726a429dd0a91677eee9a6d3ae3f7ed84654a06238762d21ae651a148"
+    },
+    {
+      "path": "docs/PROGRESS_SUMMARY.md",
+      "size_bytes": 2782,
+      "sha256": "76c1219ca7bae76bb9c9e29e34db06b65261677eabab8ea4be57ea98afe7a2e3"
+    },
+    {
+      "path": "docs/PROJECT_GOALS.md",
+      "size_bytes": 4671,
+      "sha256": "28bca74b0a21a746c3f15f0c77768268ac38accb847ff81d5a24eda20b916265"
+    },
+    {
+      "path": "docs/PROJECT_READINESS_ASSESSMENT.md",
+      "size_bytes": 8954,
+      "sha256": "08621b201af4ea59de48bdd3ddc04061128234c1034dbd32ed7faebcca47d184"
+    },
+    {
+      "path": "docs/RELEASE_NOTES_TEMPLATE.md",
+      "size_bytes": 1486,
+      "sha256": "a6febb4653d5569508a33721d9d48ca88b315ea1d0447e08c8ca465e9891da37"
+    },
+    {
+      "path": "docs/SECURE_TEST_POLICY.md",
+      "size_bytes": 1748,
+      "sha256": "382817ea0cf801419924f896438572972d5709debb8274e0232921312630ee80"
+    },
+    {
+      "path": "docs/SI_UNITS_AND_GUI_UPDATE_PLAN.md",
+      "size_bytes": 11037,
+      "sha256": "3cbd365b874d479a1ef0e79387ba1b367e15b03b6f9f5a9ef25a21d239c8f3e7"
+    },
+    {
+      "path": "docs/SYNTHETIC_DATA_ENHANCEMENT_PLAN.md",
+      "size_bytes": 6016,
+      "sha256": "b015362d4e48d80397e1496765428e55001380af8ad6c6a2d6b11c04b803c177"
+    },
+    {
+      "path": "docs/SYNTHETIC_DATA_SPEC.md",
+      "size_bytes": 2842,
+      "sha256": "c9596e5d629e5bd01b0170413ec1e0fff30ec908fe9e9a3e394230533d293bde"
+    },
+    {
+      "path": "docs/SYNTHETIC_MODEL_FPCB.md",
+      "size_bytes": 2350,
+      "sha256": "5ccc55644d473dfaa8aebe3b996f0cbbff70c41b0c7a77eb1f07311886ee8d4a"
+    },
+    {
+      "path": "docs/UNIFIED_DEVELOPMENT_PLAN.md",
+      "size_bytes": 6848,
+      "sha256": "5e3b3d99f07a8e34b047f145f7c979c0c49b9983cd11f56b8cc14cd297967a02"
+    },
+    {
+      "path": "docs/USER_GUIDE.md",
+      "size_bytes": 8122,
+      "sha256": "93fb7691b5bd007e61f8a85a44c105617985a5889afc3b528a86255f5c6c656e"
+    },
+    {
+      "path": "docs/VER7_DEV_PLAN.md",
+      "size_bytes": 2292,
+      "sha256": "7fae87e2282fb7dc057bc306fdcafd83ee105570199e6458e8d03c8f0b021bc3"
+    },
+    {
+      "path": "notebooks/00_setup_gpu_env.ipynb",
+      "size_bytes": 2115,
+      "sha256": "d84a729934e6603974a4568ab2082186298a1196d0756541e7c8bc67a69b788c"
+    },
+    {
+      "path": "notebooks/04_full_pipeline_100k.ipynb",
+      "size_bytes": 8380,
+      "sha256": "71c9c15747bf9a4e1eed156bb7dd0fd1c81dd0c198fcf9fa009cb659d0614041"
+    },
+    {
+      "path": "pyproject.toml",
+      "size_bytes": 1356,
+      "sha256": "ab81c4659e1f20052c19a4ac8b17c125e3d047ed5efd36cf2932dd619f034ff3"
+    },
+    {
+      "path": "reports/CRACK_DETECTION_FINAL_REPORT.md",
+      "size_bytes": 3793,
+      "sha256": "3727defe89a717e7f475405813ff6c12ab4d4a5a10a8d3f72b3a37aabc152043"
+    },
+    {
+      "path": "reports/DETECTION_IMPROVEMENT_STRATEGY.md",
+      "size_bytes": 4166,
+      "sha256": "8fc5ef7059c6b3887d8b46e411c91038f2a5fa40709204b07a4ef10ae6cce6bd"
+    },
+    {
+      "path": "reports/INDEX.md",
+      "size_bytes": 1427,
+      "sha256": "3f357e8d336cbe93b8c9a86aa536fa91ca4d40a7dde42f954edbdc746fcecffa"
+    },
+    {
+      "path": "reports/PRECISION_99_DEVELOPMENT_STRATEGY.md",
+      "size_bytes": 8269,
+      "sha256": "f88ac9dbfd63173c24fb5705bb8efc910f37b89151a2a0cd28d6d1c24dd600da"
+    },
+    {
+      "path": "reports/crack_detection_analysis/analysis.json",
+      "size_bytes": 1922,
+      "sha256": "b2748aef1da5f175183948e1a65e4cca477b3a6908bb072443d0a036211ae856"
+    },
+    {
+      "path": "reports/crack_detection_analysis/confusion_matrix_dream.png",
+      "size_bytes": 42192,
+      "sha256": "9185550e7af61e19231df70917ef243e705cb84da8de540dab9a46533f4e1aea"
+    },
+    {
+      "path": "reports/crack_detection_analysis/confusion_matrix_ensemble.png",
+      "size_bytes": 43845,
+      "sha256": "565ed9e83b665574d48949cd2c62f12a604e97fec1c8631e48a0a449331f056d"
+    },
+    {
+      "path": "reports/crack_detection_analysis/confusion_matrix_patchcore.png",
+      "size_bytes": 43697,
+      "sha256": "81c32bc1022d3c3b802379d97bfabb68e30083731ad63baad106e42db5e11a40"
+    },
+    {
+      "path": "reports/crack_detection_analysis/insights.md",
+      "size_bytes": 2460,
+      "sha256": "a1e69ceb576a793005018ffbc7fc459ff16ca3ffe37aedf6b3d7ecd34438242f"
+    },
+    {
+      "path": "reports/crack_detection_analysis/insights_summary.png",
+      "size_bytes": 83045,
+      "sha256": "98f8973ec53fad19c2d47467b72d3463f4c28d82a315cbe075994010b63df40c"
+    },
+    {
+      "path": "reports/crack_detection_analysis/vector_map_crack.png",
+      "size_bytes": 3532106,
+      "sha256": "e8df11f93293279ac61605e451a2f8fe36e828c32ef82dd0b0f7b5e353dae068"
+    },
+    {
+      "path": "reports/crack_detection_analysis/vector_map_normal.png",
+      "size_bytes": 3476652,
+      "sha256": "9611b8951c6b2fd053b8e3276d7bacd2d611c7dfba7f503536b536eb11a15cff"
+    },
+    {
+      "path": "reports/deliverables/CRACK_DETECTION_FINAL_REPORT.md",
+      "size_bytes": 3793,
+      "sha256": "3727defe89a717e7f475405813ff6c12ab4d4a5a10a8d3f72b3a37aabc152043"
+    },
+    {
+      "path": "reports/deliverables/FINAL_REPORT_EVALUATION_AND_STRATEGY.md",
+      "size_bytes": 11844,
+      "sha256": "f55426eb67b49817490472baa48c178f9d026d7956d9d753937caa57011fcb0c"
+    },
+    {
+      "path": "reports/deliverables/FPCB_Crack_Detection_Final_Report.docx",
+      "size_bytes": 7212365,
+      "sha256": "95e76bda7248019c498b23eb6009abc7e3b6a554d934fc1f59dea0f770fade41"
+    },
+    {
+      "path": "reports/deliverables/FPCB_Crack_Detection_Final_Report.pdf",
+      "size_bytes": 502687,
+      "sha256": "0304726be8987d7fa4cd3f3f7659a92527765c50eecd149cd48ddb4e84f1b0b0"
+    },
+    {
+      "path": "reports/deliverables/FPCB_Crack_Detection_Final_Report.pptx",
+      "size_bytes": 7188982,
+      "sha256": "0208dc3de883403509f89c17efcd54494d4aac0659b3959574c6622ee9df09d2"
+    },
+    {
+      "path": "reports/deliverables/README.md",
+      "size_bytes": 1391,
+      "sha256": "e2b37b582fff25cfc34c0159b8a175c71e524295276f784dc70f0d5a2e01cc16"
+    },
+    {
+      "path": "reports/deliverables/confusion_matrix_dream.png",
+      "size_bytes": 43949,
+      "sha256": "6a54e252b10b4ecf4539b43f909682b0c801eb8107a8c36f45aad905e451a173"
+    },
+    {
+      "path": "reports/deliverables/confusion_matrix_ensemble.png",
+      "size_bytes": 46004,
+      "sha256": "818f792c95d5fa5b28a36d05d71730a62a60f8c916adf60d3a766a7c1abaf2ba"
+    },
+    {
+      "path": "reports/deliverables/confusion_matrix_patchcore.png",
+      "size_bytes": 45538,
+      "sha256": "2e6e46e81c5086286bc8474d06487c169a296ca6bd5a7f7a2d6ec662ce16939d"
+    },
+    {
+      "path": "reports/deliverables/insights_summary.png",
+      "size_bytes": 85323,
+      "sha256": "fe5941a7081e7894b7cd54ae1dfe66b0dedffdefdb9a55acc98555725bc04e76"
+    },
+    {
+      "path": "reports/deliverables/vector_map_crack.png",
+      "size_bytes": 2190109,
+      "sha256": "ca8d3edaf9ada7211fcc671f25ebbbf80507ce07882da9507e2b50f1c4e11ceb"
+    },
+    {
+      "path": "reports/deliverables/vector_map_normal.png",
+      "size_bytes": 4498524,
+      "sha256": "dac2a5659a8820d9cccd434309fd94a26bb75402fb958be34fe87ab5a7784bce"
+    },
+    {
+      "path": "reports/deliverables/videos/01_vector_map_visualization.mp4",
+      "size_bytes": 187055,
+      "sha256": "c5102c7a51edc23d789ff604c0bf0a51a74f4d59d46106e7c71a8a356a8cefb5"
+    },
+    {
+      "path": "reports/deliverables/videos/02_analysis_process_log.mp4",
+      "size_bytes": 44136,
+      "sha256": "e467a65ad67dff833037524f663963a0eeb337013dbcb8df01595b1259bb4a1b"
+    },
+    {
+      "path": "reports/deliverables/videos/03_confusion_matrix_results.mp4",
+      "size_bytes": 46647,
+      "sha256": "7dc376bbc5446a19218c867fbf5e09cbcdcb6eefd2dbb3d70a91f0de53d6d734"
+    },
+    {
+      "path": "reports/deliverables/videos/analysis_log_sample.txt",
+      "size_bytes": 493,
+      "sha256": "2ae8db5384990b75d2fdeb91b522f4c935055435f3ef8a8df862046928c41e0e"
+    },
+    {
+      "path": "reports/goal_achievement_summary.md",
+      "size_bytes": 803,
+      "sha256": "fe22a4f78dbf0305c984cbc19ee904962a5e53c5dda145d06f96ef8f101eddcf"
+    },
+    {
+      "path": "reports/precision_progress_log.md",
+      "size_bytes": 2009,
+      "sha256": "a0a00a87197346412fbadc5738b7fda0b341a69bd67b39362c875c898a0bb970"
+    },
+    {
+      "path": "requirements-gpu.txt",
+      "size_bytes": 638,
+      "sha256": "09db130b052267139cd686ec3d670dfd36bb738d2c3e019963d425c4fe8eecf5"
+    },
+    {
+      "path": "scripts/analyze_advanced_features_overfitting.py",
+      "size_bytes": 9216,
+      "sha256": "dc814e534e84ce9c6d855087cac72dcac3e929c76c0cb9bc0d8e231def4fe625"
+    },
+    {
+      "path": "scripts/analyze_crack_detection.py",
+      "size_bytes": 23421,
+      "sha256": "61cd199c4491327b9741da94465091eda2d4aa5aca61524cff26ec4d78a59c07"
+    },
+    {
+      "path": "scripts/benchmark_phase2_ml.py",
+      "size_bytes": 6512,
+      "sha256": "51501d57e7ed383152fcfabf2ee3aa0a52b564eb6dffa732994474a9c696a596"
+    },
+    {
+      "path": "scripts/benchmark_phase_b_comprehensive.py",
+      "size_bytes": 21418,
+      "sha256": "cb8ac9154bce6ce5c03d1282624c2be2ffec2a6c1b713ca0e686eb5e001824df"
+    },
+    {
+      "path": "scripts/bootstrap.ps1",
+      "size_bytes": 601,
+      "sha256": "acab371f2c7dc4697221c541d9e871eec85fba1726591ba411c327854f27da67"
+    },
+    {
+      "path": "scripts/build_cli_exe.ps1",
+      "size_bytes": 1734,
+      "sha256": "fe2b32ed6182aa12d04bc91ec94e92a7b5485d27a7f406f93d6019b9d012615e"
+    },
+    {
+      "path": "scripts/build_exe.ps1",
+      "size_bytes": 2467,
+      "sha256": "219ddbee829755f2be1f6e99f9ae9a1c2f77122f5c82ad5aa9c75a26b65d8cc7"
+    },
+    {
+      "path": "scripts/copy_to_c_drive.bat",
+      "size_bytes": 329,
+      "sha256": "6a033b12137806c0128bfb8caccdb4952ceb024cea15c999608db381db5bbd4a"
+    },
+    {
+      "path": "scripts/create_process_videos.py",
+      "size_bytes": 8853,
+      "sha256": "1b3b67806ce95aac2b9f4255f380379e16c37a05d2fab16b07cbbe44d16cd6a1"
+    },
+    {
+      "path": "scripts/create_release.ps1",
+      "size_bytes": 2539,
+      "sha256": "8e351a6255d9164ba114c7d7629b5367a27a2041a71cba3f408a11a1cce57446"
+    },
+    {
+      "path": "scripts/cursor-speed-optimization/CURSOR_FULL_RESET.bat",
+      "size_bytes": 1082,
+      "sha256": "585cbf9301eb74432961f17492901490dae4b5bbf12e81d14376f83f92307ed2"
+    },
+    {
+      "path": "scripts/cursor-speed-optimization/CURSOR_MAINTENANCE.bat",
+      "size_bytes": 1118,
+      "sha256": "b4afc1efbab5c4b9727d80bd77125b17bd69d812f8d5768486fc0ec84a64e3e8"
+    },
+    {
+      "path": "scripts/cursor-speed-optimization/CURSOR_RAMDISK_SETUP.ps1",
+      "size_bytes": 4311,
+      "sha256": "426983506570b247689f816692bc6e2e968ed9128b311121da33fa74fc48143c"
+    },
+    {
+      "path": "scripts/cursor-speed-optimization/CURSOR_START_OPTIMIZED.bat",
+      "size_bytes": 205,
+      "sha256": "aa5935fb739a233e6d9bf1b050d0ed7b2d8c556e4efa24c34c410bac7f12c1ce"
+    },
+    {
+      "path": "scripts/cursor-speed-optimization/README.md",
+      "size_bytes": 2383,
+      "sha256": "b5d90cff7271238e23b8811e805098e5c87d991e19ae88aa6848ef82828ccc48"
+    },
+    {
+      "path": "scripts/cursor-speed-optimization/RUN_ALL_OPTIMIZATIONS.ps1",
+      "size_bytes": 2282,
+      "sha256": "79e680f25acf47e6aa6e2bdc518534451914134229f5ad4380faae9f3d56da7c"
+    },
+    {
+      "path": "scripts/evaluate_goal1_cpd.py",
+      "size_bytes": 4203,
+      "sha256": "e9c1d90ef7010a3a5d2a2a3ca5de807c194692955936bb1ab4da284ceb385403"
+    },
+    {
+      "path": "scripts/evaluate_goal1_ml.py",
+      "size_bytes": 8047,
+      "sha256": "ecc1f291c3eb94abc782874c3febefe0e1555e45fe973bc1e4662c821b335779"
+    },
+    {
+      "path": "scripts/evaluate_goal2_ml.py",
+      "size_bytes": 6925,
+      "sha256": "d3c45223fedc8608752c72d663816a16ea56e78bcb297961e13ea097da667058"
+    },
+    {
+      "path": "scripts/evaluate_goals_summary.py",
+      "size_bytes": 3559,
+      "sha256": "410b48b7f782afdd5df485b464deb286de5d8075c694f27a6612f9c441341a8e"
+    },
+    {
+      "path": "scripts/evaluate_synthetic_dataset_quality.py",
+      "size_bytes": 13299,
+      "sha256": "0e28f23ee19daedba61811c4065b25137cb1764fc396bcde64eb6e590a64e31b"
+    },
+    {
+      "path": "scripts/generate_example_datasets.py",
+      "size_bytes": 2163,
+      "sha256": "a48b3116dbf2709e0bd16b670cf8655926b913b6fdda83b4c64f32bd8496d8e9"
+    },
+    {
+      "path": "scripts/generate_final_report_docx.py",
+      "size_bytes": 34568,
+      "sha256": "fa5b81357c3c0850640f1d7e7ee72014fc99c1cc4c0b5dc839f2ac3469485b4b"
+    },
+    {
+      "path": "scripts/generate_final_report_ppt.py",
+      "size_bytes": 22954,
+      "sha256": "21b657f608519ce003869076da0461d45562d3f212559fd1c55269c2ffbd99f5"
+    },
+    {
+      "path": "scripts/generate_fpcb_test_dataset.py",
+      "size_bytes": 3342,
+      "sha256": "eaeaeb461630429b6dadb9bbe5711ca319bc8cb62041669e72f2c60bb1ef5609"
+    },
+    {
+      "path": "scripts/generate_ml_dataset.py",
+      "size_bytes": 21086,
+      "sha256": "544f3c4770653d40df92fdc01a9e27a506bbf18f19b99d35941ed826c2eae8f9"
+    },
+    {
+      "path": "scripts/monitor_and_continue.ps1",
+      "size_bytes": 2734,
+      "sha256": "491b3e01e882f096ea2f0382840d8581294cb872156b01517fb1dedb1c853964"
+    },
+    {
+      "path": "scripts/prepare_exe_test.ps1",
+      "size_bytes": 3817,
+      "sha256": "ca496c6b5454ceb3f5cdcf8aecdf55a8face32fa431c1aa9aa94ba85c45696c1"
+    },
+    {
+      "path": "scripts/prepare_fpcb_test_suite.py",
+      "size_bytes": 5491,
+      "sha256": "b788231747b8586bbf98cda04ed355a5da96628f1247203be4d96fd25f33ec72"
+    },
+    {
+      "path": "scripts/prepare_internal_eval.ps1",
+      "size_bytes": 744,
+      "sha256": "5addbefb91258e876bf4357f7e9ea0df83f3b8bd79fb91e9b521290c2069ad41"
+    },
+    {
+      "path": "scripts/redraw_vector_map.py",
+      "size_bytes": 1058,
+      "sha256": "597f68dc8ce1930038dccc95e6a89f90895623c0c2299c1c383b4988f00a8ff8"
+    },
+    {
+      "path": "scripts/run_exe_synthetic_analysis.ps1",
+      "size_bytes": 2667,
+      "sha256": "aa66f06f7101ccccc527c7c7e0a3c7cb7b38c7c7fc0f54f398a07b78242f072e"
+    },
+    {
+      "path": "scripts/run_fpcb_pipeline.py",
+      "size_bytes": 2037,
+      "sha256": "51ea5f20872045dfa141c419fb855130a824cb35efbc8c38ac84b8631eab1eed"
+    },
+    {
+      "path": "scripts/run_full_pipeline.ps1",
+      "size_bytes": 1413,
+      "sha256": "2d5a6af5c509c2e00117051d877de8035c0a34ff4ccc7f93e61bf422e73903dc"
+    },
+    {
+      "path": "scripts/run_gui.ps1",
+      "size_bytes": 347,
+      "sha256": "bc0a5da3f1c1a6172a3173538c29f45f49270aec18f910c402374e1b456e73f9"
+    },
+    {
+      "path": "scripts/run_gui_test_scenarios.py",
+      "size_bytes": 3597,
+      "sha256": "ed0c2f03d369621f19a3b5110639d9bbfed2d18a70187d759a86314b25a3a7a1"
+    },
+    {
+      "path": "scripts/run_internal_realdata.ps1",
+      "size_bytes": 715,
+      "sha256": "52684f650435495d6183e0bb9f5e379414dab7c9bef7739199cdf5a380e38e0b"
+    },
+    {
+      "path": "scripts/run_internal_synthetic_test.ps1",
+      "size_bytes": 1023,
+      "sha256": "5377bfcc040f2e1fcea5fe3a6618f871e716cb0210197fc510cc87262341ab38"
+    },
+    {
+      "path": "scripts/run_ml_pipeline_gpu.sh",
+      "size_bytes": 1363,
+      "sha256": "00c5e6944d3821b2dc0a1c2edec88ca5336ba51863f391bd0557b1a9bc63111b"
+    },
+    {
+      "path": "scripts/setup_gpu_env.ps1",
+      "size_bytes": 2013,
+      "sha256": "92c04f7af063dac08c14b5f97df3c7315f32021b9dfbc05d259eae7e249b6bae"
+    },
+    {
+      "path": "scripts/test_build_exe.ps1",
+      "size_bytes": 4233,
+      "sha256": "99220f1e583ae49e9f38faec12d44c3569a13022f4b3d0f3e122a55408b8531b"
+    },
+    {
+      "path": "scripts/test_visualization.py",
+      "size_bytes": 2124,
+      "sha256": "b455cb38a6c200f748bfd67b1eb25ef7f1954eb09e8aad98b3e438aab92e3663"
+    },
+    {
+      "path": "scripts/track_build_and_release.ps1",
+      "size_bytes": 5703,
+      "sha256": "bb8cca349445740b128f1855df84bc6af9a45ac73866bf880066fc3a3b244999"
+    },
+    {
+      "path": "scripts/validate_advanced_features.py",
+      "size_bytes": 5867,
+      "sha256": "31f862fe2b59e2d0fefd4c59ae5af003c3bf38838d87226b961a4da8e42f586f"
+    },
+    {
+      "path": "scripts/validate_changepoint_synthetic.py",
+      "size_bytes": 7804,
+      "sha256": "926b3a2d890e5238d201349649b8f37b37912603762b79e9fb26afeba452e615"
+    },
+    {
+      "path": "scripts/validate_cpd_optimization.py",
+      "size_bytes": 8956,
+      "sha256": "5d131d8ffbe91fef7245415a982ecb0c811f7b671602d99eb029647f478034e7"
+    },
+    {
+      "path": "scripts/validate_dream_synthetic.py",
+      "size_bytes": 6056,
+      "sha256": "7fa9e8fc2d79f64e2710336e40a05cae7614d5ae6eb8937dd9d625bb89035f5f"
+    },
+    {
+      "path": "scripts/validate_enhanced_dream.py",
+      "size_bytes": 9016,
+      "sha256": "915f745118b28b6d5241ec5f924392054fd67077ed7fa9b69311ebbcd74c098f"
+    },
+    {
+      "path": "scripts/validate_enhanced_synthetic.py",
+      "size_bytes": 5863,
+      "sha256": "0bc99d95c677670ec37cf8d39fbf071048105b4f4d668808c84979bcf7bd3449"
+    },
+    {
+      "path": "scripts/validate_temporal_synthetic.py",
+      "size_bytes": 8623,
+      "sha256": "b3d3a2d79585f1aa70e82367020cea222122628b7734b2a934509e909d0d49ab"
+    },
+    {
+      "path": "scripts/wait_for_build.ps1",
+      "size_bytes": 1463,
+      "sha256": "ae0cc03d8b82a5e79b1280859b0f5df35209c8c1fed418b3e25575fc95a6e349"
+    },
+    {
+      "path": "src/motionanalyzer/__init__.py",
+      "size_bytes": 92,
+      "sha256": "82c917bf53ba1f8d133bb752d681400b7ba2ffb8211e8415d641107936ba7eac"
+    },
+    {
+      "path": "src/motionanalyzer/analysis.py",
+      "size_bytes": 14645,
+      "sha256": "58ffa7b4cf3a129c7074502d76c56e0e6fdacdc493fc9260c7017cce4b2e3b02"
+    },
+    {
+      "path": "src/motionanalyzer/auto_optimize.py",
+      "size_bytes": 17796,
+      "sha256": "c562c0e6f3b9bd08c4babb3f747529336ba79c4ace5ed49751c3f41f01edf0dc"
+    },
+    {
+      "path": "src/motionanalyzer/cli.py",
+      "size_bytes": 13587,
+      "sha256": "73b98b63409ee6d805202f61a4766b5007f3c4aa5010cc74d780e023788a28a3"
+    },
+    {
+      "path": "src/motionanalyzer/crack_model.py",
+      "size_bytes": 9427,
+      "sha256": "01445abaad8421a682bee785d4381978cce5dc74f1efb7801fa5c043f830aed3"
+    },
+    {
+      "path": "src/motionanalyzer/desktop_gui.py",
+      "size_bytes": 88457,
+      "sha256": "fde219ed1529d6535049f64e1b7844a4dd828fdf6a83ba919509b992fbb475fc"
+    },
+    {
+      "path": "src/motionanalyzer/gui.py",
+      "size_bytes": 17068,
+      "sha256": "a5acd9d1a273846ae1d2b702fb59bb7977b69f157bd6c62c95df5c35706e997b"
+    },
+    {
+      "path": "src/motionanalyzer/gui/__init__.py",
+      "size_bytes": 398,
+      "sha256": "f7c941562666f95c34a1c3c76babc9717e203b5c879ae0b5cd29535a7b536ec6"
+    },
+    {
+      "path": "src/motionanalyzer/gui/runners.py",
+      "size_bytes": 21903,
+      "sha256": "2865f567c2f5264abe6d2f0a6205178dca0edcf6cf393cd5832d02a53b5cc2fb"
+    },
+    {
+      "path": "src/motionanalyzer/gui_entry.py",
+      "size_bytes": 4595,
+      "sha256": "63af469245978262f75eff97691e864a64dc7cedb7dc51de6d9fc7de31f74d5a"
+    },
+    {
+      "path": "src/motionanalyzer/ml_models/__init__.py",
+      "size_bytes": 289,
+      "sha256": "e15f5719866749416291b84091160b0d8d77fb55f3d668026b74d6b49ae86862"
+    },
+    {
+      "path": "src/motionanalyzer/ml_models/dream.py",
+      "size_bytes": 27309,
+      "sha256": "33686c7845cbcf5e6a06517a0e1fdb46cf06cb36e8f11127006af730d10449af"
+    },
+    {
+      "path": "src/motionanalyzer/ml_models/dream_temporal.py",
+      "size_bytes": 15958,
+      "sha256": "a2b033f028b812b1b707ae51d863afecfb6157f96e1f6b73d87f72149459810c"
+    },
+    {
+      "path": "src/motionanalyzer/ml_models/hybrid.py",
+      "size_bytes": 15097,
+      "sha256": "71c0b66b1e6d2f879a13d18dc5cbaa99803c67b2d7080414eb4c4df7840415cc"
+    },
+    {
+      "path": "src/motionanalyzer/ml_models/patchcore.py",
+      "size_bytes": 8811,
+      "sha256": "11125961e6c7d8917116a560d5ff5f091f33fba6aadfe17888790203753ecf00"
+    },
+    {
+      "path": "src/motionanalyzer/optimizers/__init__.py",
+      "size_bytes": 285,
+      "sha256": "f2cd47df0c56240560c643a85122d8ba7bda09b0b2b54094901f06b80d1b6c25"
+    },
+    {
+      "path": "src/motionanalyzer/optimizers/bayesian.py",
+      "size_bytes": 3530,
+      "sha256": "b1529fa2533398b310a820219d873deb42c5bb21a5b75761e048772870ece69f"
+    },
+    {
+      "path": "src/motionanalyzer/optimizers/grid_search.py",
+      "size_bytes": 5144,
+      "sha256": "64f4574ca36d7fd59c162609ef9cec9059062229a30abfd547e4b951af448f24"
+    },
+    {
+      "path": "src/motionanalyzer/paths.py",
+      "size_bytes": 944,
+      "sha256": "ee059ad18ed0bae1e97835e908b96c7fbd7461370c1f9c970d4ac3d31ec76b25"
+    },
+    {
+      "path": "src/motionanalyzer/preflight.py",
+      "size_bytes": 5296,
+      "sha256": "4123eba32db8941ad36068b025a022dfcbc90d7158c099efc5b01fda5373f559"
+    },
+    {
+      "path": "src/motionanalyzer/synthetic.py",
+      "size_bytes": 25594,
+      "sha256": "777a1337902c8be6a3994277e945cbb0dc99f776f6c022531b5d62ff2609ea64"
+    },
+    {
+      "path": "src/motionanalyzer/testsuite.py",
+      "size_bytes": 2980,
+      "sha256": "f4ab1e6463090d357968684dc40ab6a86f62f109b218b118be73a07e3d10c3a6"
+    },
+    {
+      "path": "src/motionanalyzer/time_series/__init__.py",
+      "size_bytes": 326,
+      "sha256": "8f16581213791a2414cc7a4a2f839b87fa52f75361cb404c9d69edd6f3946fa7"
+    },
+    {
+      "path": "src/motionanalyzer/time_series/changepoint.py",
+      "size_bytes": 10549,
+      "sha256": "f5a5e8c3f919911d2d969315fa4246b24f02f3055e82971873abb5b1f00b3450"
+    },
+    {
+      "path": "src/motionanalyzer/time_series/changepoint_optimizer.py",
+      "size_bytes": 16997,
+      "sha256": "983850addb2e1d73eac5e3bf49319d277289842a4090d779694851dfa0a37ceb"
+    },
+    {
+      "path": "src/motionanalyzer/visualization.py",
+      "size_bytes": 27835,
+      "sha256": "19754e6263a1319b4711c5d262c96c915ebd199f692ce68040af9c9176c99cb7"
+    },
+    {
+      "path": "tests/test_advanced_features.py",
+      "size_bytes": 2724,
+      "sha256": "a95acf969ef2877f07a9533196757a39088c0c8eaff6bb03a7adc362ce8863b4"
+    },
+    {
+      "path": "tests/test_analysis.py",
+      "size_bytes": 1903,
+      "sha256": "397cc06bd9cdf5b59097a1e40b22e30c0f27643bb1023ff0d75cd8afd3619643"
+    },
+    {
+      "path": "tests/test_auto_optimize_feature_config.py",
+      "size_bytes": 1270,
+      "sha256": "4dce063f87eab3f5bec9f42ac6685d07e142cd316d49918af5a4cc42cb3a7caf"
+    },
+    {
+      "path": "tests/test_changepoint.py",
+      "size_bytes": 7574,
+      "sha256": "14a326380bb10ceadabe0e8092e542f8bcdd2918f977cd1f7d23515548003fff"
+    },
+    {
+      "path": "tests/test_crack_model.py",
+      "size_bytes": 5643,
+      "sha256": "1920223c41b6441acea3479d880dac78270cf7acff300480b2fc61f2e4125274"
+    },
+    {
+      "path": "tests/test_dream_draem.py",
+      "size_bytes": 2565,
+      "sha256": "70b58fedd8dc2337bac0d3df0cba3189fa55e0cfc503dcaf2c866cef534f193c"
+    },
+    {
+      "path": "tests/test_gui_runners.py",
+      "size_bytes": 3959,
+      "sha256": "81bc972cedd34083e6b10142371f1b6e748f0c095867a0b0e2a255642337914c"
+    },
+    {
+      "path": "tests/test_normalize_features.py",
+      "size_bytes": 1629,
+      "sha256": "db180133743c55cd513037a9758fdc36c8f3ddf93aff99d1cab9d0ee83a7e132"
+    },
+    {
+      "path": "tests/test_optimizers.py",
+      "size_bytes": 3459,
+      "sha256": "cafe8ec668f2bde6049b70bf2c2bf9516ebed4b25b5e0b88625e343e4ce82342"
+    },
+    {
+      "path": "tests/test_patchcore.py",
+      "size_bytes": 4381,
+      "sha256": "c6852db73ae75445f0cc133349405fefbd1a040a4a41facaa8937a2f713b32dd"
+    },
+    {
+      "path": "tests/test_preflight.py",
+      "size_bytes": 1629,
+      "sha256": "dffa5dc1ff5cde5790c1aa69dd74f976b2c7d8e7f50bc72992084a287105f2f7"
+    },
+    {
+      "path": "tests/test_smoke.py",
+      "size_bytes": 2573,
+      "sha256": "d72b81f896c42f1ce419e8030b6b954a21130e3ef6b1a0c0da8769071289db03"
+    },
+    {
+      "path": "tests/test_synthetic.py",
+      "size_bytes": 1290,
+      "sha256": "a0a30f19d6625d08e6df3a63b58e332a9328823c140338297a258c0b9cb30368"
+    },
+    {
+      "path": "tests/test_testsuite.py",
+      "size_bytes": 343,
+      "sha256": "a235aa93000b256659b2e3c7af3c87834fc26128be874c25df70b877b2136649"
+    }
+  ]
+}

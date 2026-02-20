@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ArtifactMetadata",
+  "type": "object",
+  "required": ["id", "path", "type", "status"],
+  "properties": {
+    "id": { "type": "string" },
+    "path": { "type": "string" },
+    "type": { "type": "string", "enum": ["image", "pdf", "docx", "json", "log", "other"] },
+    "status": { "type": "string", "enum": ["active", "archived"] },
+    "produced_by": { "type": "string" },
+    "summary": { "type": "string" }
+  }
+}

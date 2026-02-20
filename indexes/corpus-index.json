@@ -1,0 +1,122 @@
+{
+  "version": "v1",
+  "generated_by": "manual-bootstrap",
+  "canonical_read_order": [
+    "docs/INDEX.md",
+    "docs/PROJECT_GOALS.md",
+    "docs/DEVELOPMENT_ROADMAP_FINAL.md",
+    "docs/PHASE_B_INSIGHTS.md",
+    "reports/INDEX.md",
+    "reports/crack_detection_analysis/analysis.json"
+  ],
+  "entries": [
+    {
+      "id": "docs-index",
+      "path": "docs/INDEX.md",
+      "kind": "doc",
+      "title": "Documentation Index",
+      "canonical": true,
+      "status": "active",
+      "tags": ["index", "entrypoint"]
+    },
+    {
+      "id": "project-goals",
+      "path": "docs/PROJECT_GOALS.md",
+      "kind": "doc",
+      "title": "Project Goals",
+      "canonical": true,
+      "status": "active",
+      "tags": ["goal1", "goal2", "fpcb"]
+    },
+    {
+      "id": "dev-roadmap",
+      "path": "docs/DEVELOPMENT_ROADMAP_FINAL.md",
+      "kind": "doc",
+      "title": "Development Roadmap",
+      "canonical": true,
+      "status": "active",
+      "tags": ["roadmap", "planning"]
+    },
+    {
+      "id": "phaseb-insights",
+      "path": "docs/PHASE_B_INSIGHTS.md",
+      "kind": "doc",
+      "title": "Phase B Insights",
+      "canonical": true,
+      "status": "active",
+      "tags": ["insights", "leakage", "evaluation"]
+    },
+    {
+      "id": "synthetic-spec",
+      "path": "docs/SYNTHETIC_DATA_SPEC.md",
+      "kind": "doc",
+      "title": "Synthetic Data Specification",
+      "canonical": true,
+      "status": "active",
+      "tags": ["synthetic", "scenario", "contract"]
+    },
+    {
+      "id": "cpd-guide",
+      "path": "docs/CHANGEPOINT_DETECTION.md",
+      "kind": "doc",
+      "title": "Change Point Detection Guide",
+      "canonical": true,
+      "status": "active",
+      "tags": ["cpd", "cusum", "pelt"]
+    },
+    {
+      "id": "ml-playbook",
+      "path": "docs/AI_MODELING_PLAYBOOK.md",
+      "kind": "doc",
+      "title": "AI Modeling Playbook",
+      "canonical": true,
+      "status": "active",
+      "tags": ["modeling", "checklist", "physics-informed"]
+    },
+    {
+      "id": "pipeline-runbook",
+      "path": "docs/PIPELINE_SETUP_COMPLETE.md",
+      "kind": "doc",
+      "title": "Pipeline Setup Complete",
+      "canonical": true,
+      "status": "active",
+      "tags": ["gpu", "jupyter", "operations"]
+    },
+    {
+      "id": "reports-index",
+      "path": "reports/INDEX.md",
+      "kind": "report",
+      "title": "Reports Index",
+      "canonical": true,
+      "status": "active",
+      "tags": ["reports", "entrypoint"]
+    },
+    {
+      "id": "latest-analysis-json",
+      "path": "reports/crack_detection_analysis/analysis.json",
+      "kind": "report",
+      "title": "Latest Crack Analysis Metrics",
+      "canonical": true,
+      "status": "active",
+      "tags": ["metrics", "json", "latest"]
+    },
+    {
+      "id": "latest-analysis-insights",
+      "path": "reports/crack_detection_analysis/insights.md",
+      "kind": "report",
+      "title": "Latest Crack Analysis Insights",
+      "canonical": true,
+      "status": "active",
+      "tags": ["insights", "latest"]
+    },
+    {
+      "id": "artifacts-index",
+      "path": "artifacts/INDEX.md",
+      "kind": "artifact",
+      "title": "Artifacts Index",
+      "canonical": true,
+      "status": "active",
+      "tags": ["artifacts", "archive", "policy"]
+    }
+  ]
+}

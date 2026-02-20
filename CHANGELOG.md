@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - 10k/100k 스케일 합성 데이터셋 생성 옵션 및 병렬 생성 워크플로우 (`scripts/generate_ml_dataset.py`)
-- GPU/Jupyter 실행 체계 및 운영 문서/노트북 추가 (`docs/JUPYTER_GPU_SETUP.md`, `docs/PIPELINE_SETUP_COMPLETE.md`, `notebooks/*`)
+- GPU/Jupyter 실행 체계 및 운영 문서/노트북 추가 (`docs/PIPELINE_SETUP_COMPLETE.md`, `notebooks/*`)
 - Cursor 프로젝트 스킬/룰 및 유지보수 스크립트 추가 (`.cursor/skills/*`, `.cursor/rules/*`, `scripts/cursor-speed-optimization/*`)
 - Phase B.5: Change Point Detection 고도화 (파라미터 자동 튜닝, 다중 특징 결합, 앙상블 CPD)
 - Phase B.4: 고급 특징 엔지니어링 (통계/시간/주파수 도메인 특징)

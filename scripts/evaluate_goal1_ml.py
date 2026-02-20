@@ -94,7 +94,7 @@ def main() -> None:
             normalize_features,
             prepare_training_data,
         )
-        from motionanalyzer.gui.runners import _run_dream, _run_patchcore
+        from motionanalyzer.services.ml_training import run_dream_training, run_patchcore_training
         from sklearn.metrics import roc_auc_score
     except ImportError as e:
         print(f"ML dependencies required: pip install -e '.[ml]'\n{e}")
@@ -149,7 +149,7 @@ def main() -> None:
     # DREAM
     dream_epochs = 15 if args.small else 50
     try:
-        res = _run_dream(
+        res = run_dream_training(
             pd.DataFrame(X_train, columns=feature_cols),
             y_train,
             log=log,
@@ -173,7 +173,7 @@ def main() -> None:
 
     # PatchCore
     try:
-        res = _run_patchcore(
+        res = run_patchcore_training(
             pd.DataFrame(X_train, columns=feature_cols),
             y_train,
             log=log,

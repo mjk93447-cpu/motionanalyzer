@@ -37,10 +37,11 @@ reports/*
 !reports/*.md
 !reports/INDEX.md
 !reports/CRACK_DETECTION_FINAL_REPORT.md
-!reports/DETECTION_IMPROVEMENT_STRATEGY.md
-!reports/PRECISION_99_DEVELOPMENT_STRATEGY.md
-!reports/precision_progress_log.md
 !reports/goal_achievement_summary.md
+reports/**/*.png
+reports/**/*.pdf
+reports/**/*.docx
+reports/**/*.pptx
 
 # Data: large, regenerable via scripts
 data/raw/
