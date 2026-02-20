@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- 10k/100k 스케일 합성 데이터셋 생성 옵션 및 병렬 생성 워크플로우 (`scripts/generate_ml_dataset.py`)
+- GPU/Jupyter 실행 체계 및 운영 문서/노트북 추가 (`docs/JUPYTER_GPU_SETUP.md`, `docs/PIPELINE_SETUP_COMPLETE.md`, `notebooks/*`)
+- Cursor 프로젝트 스킬/룰 및 유지보수 스크립트 추가 (`.cursor/skills/*`, `.cursor/rules/*`, `scripts/cursor-speed-optimization/*`)
 - Phase B.5: Change Point Detection 고도화 (파라미터 자동 튜닝, 다중 특징 결합, 앙상블 CPD)
 - Phase B.4: 고급 특징 엔지니어링 (통계/시간/주파수 도메인 특징)
 - Phase B.3: Temporal Modeling (LSTM/GRU 기반 시계열 이상 감지)
@@ -20,11 +23,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - EXE 빌드 테스트 스크립트 (`scripts/test_build_exe.ps1`)
 
 ### Changed
+- 리포트 생성기가 `analysis.json` 기반으로 테이블 메트릭을 동적으로 반영하도록 개선 (`scripts/generate_final_report_docx.py`)
+- 크랙 분석 임계값 선정 로직을 validation 우선 방식으로 개선 (`scripts/analyze_crack_detection.py`)
+- 합성 생성기에 재현 가능한 노이즈 모드(gaussian/outlier/temporal_drift/scale_jitter/mixed) 추가 (`src/motionanalyzer/synthetic.py`)
+- 버전 상수 정합화: 패키지 버전을 `0.2.0`으로 통일 (`src/motionanalyzer/__init__.py`)
 - 정규화 함수에 `fit_df` 파라미터 추가로 라벨 누설 방지
 - GUI에 ML 모델 로딩 시 graceful error handling 추가
 - GitHub Actions 워크플로우에 ML 포함/미포함 두 가지 EXE 빌드 추가
 
 ### Fixed
+- 보고서 요약 문서 오염 텍스트 자동 복구 및 검증 완료 (`reports/goal_achievement_summary.md`)
+- Git 추적 잡음 방지: GPU 가상환경 및 임시 산출물 무시 규칙 보강 (`.gitignore`)
 - DREAM 모델 예측 시 reconstruction error와 discriminator 출력 결합 수정
 - Temporal 모델 벤치마크에서 시계열 구조 보존 개선
 
