@@ -9,5 +9,13 @@ torch>=2.0.0
 # ML 의존성 (pyproject.toml [ml]과 동일)
 scikit-learn>=1.3.0
 
+# Jupyter (GPU 가상환경용)
+jupyter>=1.0.0
+ipykernel>=6.0.0
+ipywidgets>=8.0.0
+
+# 병렬 처리
+joblib>=1.3.0
+
 # motionanalyzer는 별도 설치: pip install -e .
-# 전체 설치 예: pip install -e ".[ml]" && pip install torch --index-url https://download.pytorch.org/whl/cu121
+# 전체 설치 예: pip install -e ".[ml]" && pip install -r requirements-gpu.txt

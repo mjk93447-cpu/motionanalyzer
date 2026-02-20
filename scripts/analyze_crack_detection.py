@@ -8,6 +8,7 @@ Output: reports/crack_detection_analysis/
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -78,9 +79,10 @@ def _select_threshold_precision_priority(
     return best_thresh, best_prec, best_rec
 
 
-def _run_evaluation_and_get_predictions() -> tuple[dict, dict, np.ndarray, np.ndarray, dict]:
+def _run_evaluation_and_get_predictions(max_train: int | None = None) -> tuple[dict, dict, np.ndarray, np.ndarray, dict]:
     """Run Goal 1 ML evaluation and return predictions for each model.
     Returns: results, preds, y_test, X_test, hard_subset_indices (for per-scenario breakdown).
+    max_train: If set, limit train samples per class for faster runs (e.g. 2000).
     """
     manifest_path = BASE / "manifest.json"
     if not manifest_path.exists():
@@ -89,13 +91,21 @@ def _run_evaluation_and_get_predictions() -> tuple[dict, dict, np.ndarray, np.nd
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     entries = manifest["entries"]
 
-    # Train: normal + light_distortion + thick_panel (Phase 1.3 경계 케이스 포함)
-    normal_train_pure = [BASE / e["path"] for e in entries if e["goal"] == "normal" and e.get("scenario") != "light_distortion" and e["split"] == "train"][:120]
+    # Train: normal + light_distortion + thick_panel (no limit; use full train set)
+    normal_train_pure = [BASE / e["path"] for e in entries if e["goal"] == "normal" and e.get("scenario") != "light_distortion" and e["split"] == "train"]
     normal_train_ld = [BASE / e["path"] for e in entries if e.get("scenario") == "light_distortion" and e["split"] == "train"]
     normal_train_thick = [BASE / e["path"] for e in entries if e["goal"] == "variant" and e["split"] == "train"]  # thick_panel, label=0
     normal_train = normal_train_ld + normal_train_thick + normal_train_pure
+    normal_val = [BASE / e["path"] for e in entries if e["goal"] == "normal" and e["split"] == "val"]
     normal_test = [BASE / e["path"] for e in entries if e["goal"] == "normal" and e["split"] == "test"]
-    crack_train = [BASE / e["path"] for e in entries if e["goal"] == "goal1" and e["split"] == "train"][:25]
+    crack_train = [BASE / e["path"] for e in entries if e["goal"] == "goal1" and e["split"] == "train"]
+
+    if max_train is not None and max_train > 0:
+        n_norm = min(max_train, len(normal_train))
+        n_crack = min(max(max_train // 4, 100), len(crack_train))
+        normal_train = normal_train[:n_norm]
+        crack_train = crack_train[:n_crack]
+    crack_val = [BASE / e["path"] for e in entries if e["goal"] == "goal1" and e["split"] == "val"]
     crack_test = [BASE / e["path"] for e in entries if e["goal"] == "goal1" and e["split"] == "test"]
 
     # Hard subset: light_distortion (normal) + micro_crack (crack) for per-scenario evaluation
@@ -132,6 +142,11 @@ def _run_evaluation_and_get_predictions() -> tuple[dict, dict, np.ndarray, np.nd
         crack_datasets=crack_train,
         feature_config=feature_config,
     )
+    feat_val, lab_val = prepare_training_data(
+        normal_datasets=normal_val,
+        crack_datasets=crack_val,
+        feature_config=feature_config,
+    )
     feat_test, lab_test = prepare_training_data(
         normal_datasets=normal_test,
         crack_datasets=crack_test,
@@ -149,15 +164,28 @@ def _run_evaluation_and_get_predictions() -> tuple[dict, dict, np.ndarray, np.nd
 
     normal_mask_train = np.asarray(lab_train, dtype=int) == 0
     norm_train = normalize_features(feat_train, exclude_cols=exclude, fit_df=feat_train.loc[normal_mask_train])
+    norm_val = normalize_features(feat_val, exclude_cols=exclude, fit_df=feat_train.loc[normal_mask_train])
     norm_test = normalize_features(feat_test, exclude_cols=exclude, fit_df=feat_train.loc[normal_mask_train])
     X_train = norm_train[feature_cols].fillna(0).to_numpy(dtype=np.float32)
     y_train = np.asarray(lab_train, dtype=int)
+    X_val = norm_val[feature_cols].fillna(0).to_numpy(dtype=np.float32)
+    y_val = np.asarray(lab_val, dtype=int)
     X_test = norm_test[feature_cols].fillna(0).to_numpy(dtype=np.float32)
     y_test = np.asarray(lab_test, dtype=int)
+
+    # Use val for threshold; fallback to test if val too small (avoids data leakage in normal case)
+    use_val_for_threshold = len(y_val) >= 20 and int((y_val == 1).sum()) >= 2
 
     results: dict = {}
     pred_dream: np.ndarray | None = None
     pred_patchcore: np.ndarray | None = None
+
+    # GPU 시 batch_size 증가 (속도 개선)
+    try:
+        import torch
+        batch_size = 128 if torch.cuda.is_available() else 32
+    except ImportError:
+        batch_size = 32
 
     # DREAM
     res = _run_dream(
@@ -166,21 +194,28 @@ def _run_evaluation_and_get_predictions() -> tuple[dict, dict, np.ndarray, np.nd
         log=log,
         progress=progress,
         epochs=15,
+        batch_size=batch_size,
         weight_decay=1e-5,
     )
     if res.get("success"):
         from motionanalyzer.ml_models.dream import DREAMPyTorch
         model = DREAMPyTorch(input_dim=len(feature_cols))
         model.load(res["model_path"])
-        scores = model.predict(X_test)
-        roc = roc_auc_score(y_test, scores)
-        best_thresh, best_prec, best_rec = _select_threshold_precision_priority(scores, y_test)
-        pred_dream = (scores >= best_thresh).astype(int)
+        scores_test = model.predict(X_test)
+        roc = roc_auc_score(y_test, scores_test)
+        if use_val_for_threshold:
+            scores_val = model.predict(X_val)
+            best_thresh, _, _ = _select_threshold_precision_priority(scores_val, y_val)
+            thresh_src = "precision_priority (val)"
+        else:
+            best_thresh, _, _ = _select_threshold_precision_priority(scores_test, y_test)
+            thresh_src = "precision_priority (test, val too small)"
+        pred_dream = (scores_test >= best_thresh).astype(int)
         cm = confusion_matrix(y_test, pred_dream)
         results["DREAM"] = {
             "roc_auc": float(roc),
             "best_threshold": float(best_thresh),
-            "threshold_criterion": "precision_priority",
+            "threshold_criterion": thresh_src,
             "confusion_matrix": cm.tolist(),
             "tn": int(cm[0, 0]), "fp": int(cm[0, 1]), "fn": int(cm[1, 0]), "tp": int(cm[1, 1]),
         }
@@ -196,15 +231,21 @@ def _run_evaluation_and_get_predictions() -> tuple[dict, dict, np.ndarray, np.nd
         from motionanalyzer.ml_models.patchcore import PatchCoreScikitLearn
         model = PatchCoreScikitLearn(feature_dim=len(feature_cols))
         model.load(res["model_path"])
-        scores = model.predict(pd.DataFrame(X_test, columns=feature_cols))
-        roc = roc_auc_score(y_test, scores)
-        best_thresh, best_prec, best_rec = _select_threshold_precision_priority(scores, y_test)
-        pred_patchcore = (scores >= best_thresh).astype(int)
+        scores_test = model.predict(pd.DataFrame(X_test, columns=feature_cols))
+        roc = roc_auc_score(y_test, scores_test)
+        if use_val_for_threshold:
+            scores_val = model.predict(pd.DataFrame(X_val, columns=feature_cols))
+            best_thresh, _, _ = _select_threshold_precision_priority(scores_val, y_val)
+            thresh_src = "precision_priority (val)"
+        else:
+            best_thresh, _, _ = _select_threshold_precision_priority(scores_test, y_test)
+            thresh_src = "precision_priority (test, val too small)"
+        pred_patchcore = (scores_test >= best_thresh).astype(int)
         cm = confusion_matrix(y_test, pred_patchcore)
         results["PatchCore"] = {
             "roc_auc": float(roc),
             "best_threshold": float(best_thresh),
-            "threshold_criterion": "precision_priority",
+            "threshold_criterion": thresh_src,
             "confusion_matrix": cm.tolist(),
             "tn": int(cm[0, 0]), "fp": int(cm[0, 1]), "fn": int(cm[1, 0]), "tp": int(cm[1, 1]),
         }
@@ -359,15 +400,23 @@ def _compute_hard_subset_metrics(
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Crack detection performance analysis")
+    parser.add_argument("--max-train", type=int, default=None,
+                        help="Limit train samples per class for faster runs (e.g. 2000)")
+    args = parser.parse_args()
+
     print("=" * 60)
     print("Crack Detection Performance Analysis")
     print("=" * 60)
+    if args.max_train:
+        print(f"  (--max-train {args.max_train} for faster run)")
+    print()
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     # 1. Run evaluation and get predictions
     print("\n[1/5] Running Goal 1 ML evaluation (DREAM, PatchCore)...")
-    results, preds, y_test, feat_test, hard_info = _run_evaluation_and_get_predictions()
+    results, preds, y_test, feat_test, hard_info = _run_evaluation_and_get_predictions(max_train=args.max_train)
 
     # 2. Hard subset metrics (light_distortion, micro_crack)
     hard_metrics = {}

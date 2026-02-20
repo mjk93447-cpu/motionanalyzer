@@ -14,6 +14,8 @@ ScenarioName = Literal[
     "micro_crack",      # Subtle crack, harder to detect
 ]
 
+NoiseMode = Literal["gaussian", "outlier", "temporal_drift", "scale_jitter", "mixed"]
+
 
 @dataclass(frozen=True)
 class SyntheticConfig:
@@ -31,6 +33,8 @@ class SyntheticConfig:
     noise_std: float = 0.8
     seed: int = 42
     scenario: ScenarioName = "normal"
+    noise_mode: NoiseMode | None = None
+    """Optional augmentation: gaussian, outlier, temporal_drift, scale_jitter, mixed."""
 
 
 @dataclass(frozen=True)
@@ -367,6 +371,38 @@ def high_fidelity_fpcb_config(
     )
 
 
+def _apply_noise_mode(
+    pts: np.ndarray,
+    mode: NoiseMode,
+    rng: np.random.Generator,
+    frame_idx: int,
+    noise_std: float,
+) -> None:
+    """Apply optional image-data noise augmentation (in-place)."""
+    n = len(pts)
+    if mode == "gaussian":
+        pts += rng.normal(loc=0.0, scale=noise_std * 0.5, size=pts.shape)
+    elif mode == "outlier":
+        spike_ratio = 0.01 + rng.uniform(0, 0.03)
+        n_spike = max(1, int(spike_ratio * n))
+        idx = rng.choice(n, size=min(n_spike, n), replace=False)
+        pts[idx] += rng.uniform(-3.0, 3.0, size=(len(idx), 2))
+    elif mode == "temporal_drift":
+        drift = rng.uniform(-0.8, 0.8, size=2) * (1.0 + 0.02 * frame_idx)
+        pts += drift
+    elif mode == "scale_jitter":
+        scale = 1.0 + rng.uniform(-0.015, 0.015)
+        centroid = np.mean(pts, axis=0)
+        pts[:] = centroid + (pts - centroid) * scale
+    elif mode == "mixed":
+        pts += rng.normal(loc=0.0, scale=noise_std * 0.3, size=pts.shape)
+        if rng.random() < 0.15:
+            idx = rng.integers(0, n, size=min(max(1, n // 50), n))
+            pts[idx] += rng.uniform(-2.0, 2.0, size=(len(idx), 2))
+        drift = rng.uniform(-0.4, 0.4, size=2)
+        pts += drift
+
+
 def _meters_per_pixel(config: SyntheticConfig) -> float:
     """SI length scale: meters per pixel (1 px = this many m)."""
     if config.meters_per_pixel is not None and config.meters_per_pixel > 0:
@@ -466,6 +502,9 @@ def generate_synthetic_bundle(
 
             pts = centerline + translation
             pts += rng.normal(loc=0.0, scale=config.noise_std, size=pts.shape)
+
+            if config.noise_mode is not None:
+                _apply_noise_mode(pts, config.noise_mode, rng, frame_idx, config.noise_std)
 
             # Light distortion: illumination-induced edge detection drift (Phase 1.2 다양화)
             if config.scenario == "light_distortion":
