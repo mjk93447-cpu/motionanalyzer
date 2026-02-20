@@ -1,0 +1,10 @@
+﻿# Cursor ?몃뜳???쒖쇅
+.venv/
+.venv-gpu/
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+build/
+data/synthetic/
+node_modules/

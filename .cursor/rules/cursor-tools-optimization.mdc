@@ -1,0 +1,16 @@
+---
+description: Use skills, shell tools, and compaction-aware workflow by default
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# Cursor Tooling Optimization
+
+- Prefer project skill `.cursor/skills/ai-coding-accelerator/SKILL.md` for coding tasks.
+- Use shell tools for command execution, validation, and reproducible checkpoints.
+- Keep command usage deterministic and concise; avoid ambiguous one-liners.
+- For long multi-step sessions, use compaction-aware workflow:
+  - close one objective before starting the next
+  - summarize decisions after major milestones
+  - move durable guidance into rules/skills, not transient chat turns

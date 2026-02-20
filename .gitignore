@@ -1,4 +1,5 @@
 .venv/
+.venv-gpu/
 __pycache__/
 *.py[cod]
 *.pyo
@@ -46,3 +47,4 @@ data/raw/
 data/processed/
 data/synthetic/
 exports/
+compact.html
