@@ -1,45 +1,45 @@
 {
-  "n_test": 10492,
-  "n_normal": 9638,
-  "n_crack": 854,
+  "n_test": 1159,
+  "n_normal": 976,
+  "n_crack": 183,
   "models": {
     "DREAM": {
-      "roc_auc": 0.9949395275240036,
-      "best_threshold": 2.995523452758789,
-      "threshold_criterion": "precision_priority",
+      "roc_auc": 0.8945343993550121,
+      "best_threshold": 3.949352741241455,
+      "threshold_criterion": "precision_priority (val)",
       "confusion_matrix": [
         [
-          9637,
-          1
+          949,
+          27
         ],
         [
-          275,
-          579
+          114,
+          69
         ]
       ],
-      "tn": 9637,
-      "fp": 1,
-      "fn": 275,
-      "tp": 579
+      "tn": 949,
+      "fp": 27,
+      "fn": 114,
+      "tp": 69
     },
     "PatchCore": {
-      "roc_auc": 0.994077040870131,
-      "best_threshold": 13.750259399414062,
-      "threshold_criterion": "precision_priority",
+      "roc_auc": 0.9285642300456867,
+      "best_threshold": 14.116621971130371,
+      "threshold_criterion": "precision_priority (val)",
       "confusion_matrix": [
         [
-          9637,
-          1
+          946,
+          30
         ],
         [
-          295,
-          559
+          113,
+          70
         ]
       ],
-      "tn": 9637,
-      "fp": 1,
-      "fn": 295,
-      "tp": 559
+      "tn": 946,
+      "fp": 30,
+      "fn": 113,
+      "tp": 70
     },
     "Ensemble": {
       "roc_auc": 0.0,
@@ -47,54 +47,54 @@
       "threshold_criterion": "both_agree",
       "confusion_matrix": [
         [
-          9638,
-          0
+          956,
+          20
         ],
         [
-          297,
-          557
+          115,
+          68
         ]
       ],
-      "tn": 9638,
-      "fp": 0,
-      "fn": 297,
-      "tp": 557
+      "tn": 956,
+      "fp": 20,
+      "fn": 115,
+      "tp": 68
     }
   },
   "hard_subset_metrics": {
     "DREAM": {
       "light_distortion": {
-        "n": 8,
-        "correct_as_normal": 7,
-        "acc": 0.875
+        "n": 1,
+        "correct_as_normal": 0,
+        "acc": 0.0
       },
       "micro_crack": {
-        "n": 2,
-        "correct_as_crack": 2,
+        "n": 1,
+        "correct_as_crack": 1,
         "acc": 1.0
       }
     },
     "PatchCore": {
       "light_distortion": {
-        "n": 8,
-        "correct_as_normal": 7,
-        "acc": 0.875
+        "n": 1,
+        "correct_as_normal": 0,
+        "acc": 0.0
       },
       "micro_crack": {
-        "n": 2,
-        "correct_as_crack": 2,
+        "n": 1,
+        "correct_as_crack": 1,
         "acc": 1.0
       }
     },
     "Ensemble": {
       "light_distortion": {
-        "n": 8,
-        "correct_as_normal": 8,
-        "acc": 1.0
+        "n": 1,
+        "correct_as_normal": 0,
+        "acc": 0.0
       },
       "micro_crack": {
-        "n": 2,
-        "correct_as_crack": 2,
+        "n": 1,
+        "correct_as_crack": 1,
         "acc": 1.0
       }
     }

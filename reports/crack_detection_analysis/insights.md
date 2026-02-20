@@ -6,54 +6,54 @@
 
 | Metric | Value |
 |--------|-------|
-| True Negative (TN) | 9637 |
-| False Positive (FP) | 1 |
-| False Negative (FN) | 275 |
-| True Positive (TP) | 579 |
-| Precision | 0.9983 |
-| Recall | 0.6780 |
-| F1 | 0.8075 |
-| ROC AUC | 0.9949 |
+| True Negative (TN) | 949 |
+| False Positive (FP) | 27 |
+| False Negative (FN) | 114 |
+| True Positive (TP) | 69 |
+| Precision | 0.7188 |
+| Recall | 0.3770 |
+| F1 | 0.4946 |
+| ROC AUC | 0.8945 |
 
 ### PatchCore
 
 | Metric | Value |
 |--------|-------|
-| True Negative (TN) | 9637 |
-| False Positive (FP) | 1 |
-| False Negative (FN) | 295 |
-| True Positive (TP) | 559 |
-| Precision | 0.9982 |
-| Recall | 0.6546 |
-| F1 | 0.7907 |
-| ROC AUC | 0.9941 |
+| True Negative (TN) | 946 |
+| False Positive (FP) | 30 |
+| False Negative (FN) | 113 |
+| True Positive (TP) | 70 |
+| Precision | 0.7000 |
+| Recall | 0.3825 |
+| F1 | 0.4947 |
+| ROC AUC | 0.9286 |
 
 ### Ensemble
 
 | Metric | Value |
 |--------|-------|
-| True Negative (TN) | 9638 |
-| False Positive (FP) | 0 |
-| False Negative (FN) | 297 |
-| True Positive (TP) | 557 |
-| Precision | 1.0000 |
-| Recall | 0.6522 |
-| F1 | 0.7895 |
+| True Negative (TN) | 956 |
+| False Positive (FP) | 20 |
+| False Negative (FN) | 115 |
+| True Positive (TP) | 68 |
+| Precision | 0.7727 |
+| Recall | 0.3716 |
+| F1 | 0.5018 |
 | ROC AUC | 0.0000 |
 
 ## 2. Hard Subset (light_distortion, micro_crack)
 
 ### DREAM
-- **light_distortion** (정상+조명왜곡): 7/8 정상으로 정확 분류, acc=87.50%
-- **micro_crack** (초미세 크랙): 2/2 크랙으로 정확 분류, acc=100.00%
+- **light_distortion** (정상+조명왜곡): 0/1 정상으로 정확 분류, acc=0.00%
+- **micro_crack** (초미세 크랙): 1/1 크랙으로 정확 분류, acc=100.00%
 
 ### PatchCore
-- **light_distortion** (정상+조명왜곡): 7/8 정상으로 정확 분류, acc=87.50%
-- **micro_crack** (초미세 크랙): 2/2 크랙으로 정확 분류, acc=100.00%
+- **light_distortion** (정상+조명왜곡): 0/1 정상으로 정확 분류, acc=0.00%
+- **micro_crack** (초미세 크랙): 1/1 크랙으로 정확 분류, acc=100.00%
 
 ### Ensemble
-- **light_distortion** (정상+조명왜곡): 8/8 정상으로 정확 분류, acc=100.00%
-- **micro_crack** (초미세 크랙): 2/2 크랙으로 정확 분류, acc=100.00%
+- **light_distortion** (정상+조명왜곡): 0/1 정상으로 정확 분류, acc=0.00%
+- **micro_crack** (초미세 크랙): 1/1 크랙으로 정확 분류, acc=100.00%
 
 ## 3. Vector Map Interpretation
 

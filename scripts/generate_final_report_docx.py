@@ -14,12 +14,74 @@ Output: reports/deliverables/FPCB_Crack_Detection_Final_Report.docx
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 repo_root = Path(__file__).resolve().parent.parent
 reports_dir = repo_root / "reports"
 analysis_dir = reports_dir / "crack_detection_analysis"
 deliverables_dir = reports_dir / "deliverables"
+
+
+def _load_analysis() -> dict | None:
+    """Load analysis.json if present; returns None if missing."""
+    p = analysis_dir / "analysis.json"
+    if not p.exists():
+        return None
+    return json.loads(p.read_text(encoding="utf-8"))
+
+
+def _fmt_pct(num: float, denom: float) -> str:
+    if denom <= 0:
+        return "0%"
+    return f"{100 * num / denom:.1f}%"
+
+
+def _metrics_from_analysis(a: dict) -> dict:
+    """Extract display metrics from analysis.json."""
+    models = a.get("models", {})
+    dream = models.get("DREAM", {})
+    patch = models.get("PatchCore", {})
+    ens = models.get("Ensemble", {})
+    n_test = a.get("n_test", 0)
+    n_normal = a.get("n_normal", 0)
+    n_crack = a.get("n_crack", 0)
+
+    def _prec(tp: int, fp: int) -> str:
+        return _fmt_pct(tp, tp + fp) if (tp + fp) > 0 else "N/A"
+
+    def _rec(tp: int, fn: int) -> str:
+        return _fmt_pct(tp, tp + fn) if (tp + fn) > 0 else "N/A"
+
+    m = {
+        "dream_prec": _prec(dream.get("tp", 0), dream.get("fp", 0)),
+        "dream_fp": dream.get("fp", 0),
+        "dream_rec": _rec(dream.get("tp", 0), dream.get("fn", 0)),
+        "dream_auc": f"{dream.get('roc_auc', 0):.3f}",
+        "patch_prec": _prec(patch.get("tp", 0), patch.get("fp", 0)),
+        "patch_fp": patch.get("fp", 0),
+        "patch_rec": _rec(patch.get("tp", 0), patch.get("fn", 0)),
+        "patch_auc": f"{patch.get('roc_auc', 0):.3f}",
+        "ens_prec": _prec(ens.get("tp", 0), ens.get("fp", 0)),
+        "ens_fp": ens.get("fp", 0),
+        "ens_rec": _rec(ens.get("tp", 0), ens.get("fn", 0)),
+        "tn": ens.get("tn", 0),
+        "fp": ens.get("fp", 0),
+        "fn": ens.get("fn", 0),
+        "tp": ens.get("tp", 0),
+        "n_test": n_test,
+        "n_normal": n_normal,
+        "n_crack": n_crack,
+        "hard": a.get("hard_subset_metrics", {}).get("Ensemble", {}),
+    }
+    ens_h = m["hard"]
+    ld = ens_h.get("light_distortion", {})
+    m["ld_acc"] = (
+        _fmt_pct(ld.get("correct_as_normal", 0), max(1, ld.get("n", 1)))
+        if ld.get("n", 0) > 0
+        else "N/A"
+    )
+    return m
 
 
 def _add_heading(doc, text: str, level: int = 1) -> None:
@@ -82,6 +144,7 @@ def main() -> None:
         print("Install python-docx: pip install python-docx")
         return
 
+    analysis = _load_analysis()
     doc = Document()
 
     # Title
@@ -364,55 +427,121 @@ def main() -> None:
     _add_heading(doc, "3. Results", 1)
 
     _add_heading(doc, "3.1 Performance Overview", 2)
-    _add_table(
-        doc,
-        ["Metric", "Baseline", "Final (Ensemble)", "Improvement"],
-        [
-            ["Precision", "86–88%", "100%", "+12–14%p"],
-            ["False Positive", "93–130", "0", "100% reduction"],
-            ["light_distortion (normal)", "0%", "100%", "+100%p"],
-        ],
-        caption="Table 5. Performance overview.",
-    )
+    if analysis:
+        m = _metrics_from_analysis(analysis)
+        base_prec = "86–88%"  # Reference baseline
+        ens_prec = m["ens_prec"]
+        ens_fp = m["ens_fp"]
+        _add_table(
+            doc,
+            ["Metric", "Baseline", "Final (Ensemble)", "Improvement"],
+            [
+                ["Precision", base_prec, ens_prec, "—"],
+                ["False Positive", "93–130", str(ens_fp), "—"],
+                ["light_distortion (normal)", "0%", m.get("ld_acc", "—"), "—"],
+            ],
+            caption="Table 5. Performance overview.",
+        )
+    else:
+        _add_table(
+            doc,
+            ["Metric", "Baseline", "Final (Ensemble)", "Improvement"],
+            [
+                ["Precision", "86–88%", "100%", "+12–14%p"],
+                ["False Positive", "93–130", "0", "100% reduction"],
+                ["light_distortion (normal)", "0%", "100%", "+100%p"],
+            ],
+            caption="Table 5. Performance overview.",
+        )
 
     _add_heading(doc, "3.2 Model Comparison", 2)
-    _add_table(
-        doc,
-        ["Model", "Precision", "FP", "Recall", "ROC AUC"],
-        [
-            ["DREAM", "99.83%", "1", "67.8%", "0.995"],
-            ["PatchCore", "99.82%", "1", "65.5%", "0.994"],
-            ["Ensemble (DREAM ∧ PatchCore)", "100%", "0", "65.2%", "N/A"],
-        ],
-        caption="Table 6. Model comparison (final).",
-    )
+    if analysis:
+        m = _metrics_from_analysis(analysis)
+        _add_table(
+            doc,
+            ["Model", "Precision", "FP", "Recall", "ROC AUC"],
+            [
+                ["DREAM", m["dream_prec"], str(m["dream_fp"]), m["dream_rec"], m["dream_auc"]],
+                ["PatchCore", m["patch_prec"], str(m["patch_fp"]), m["patch_rec"], m["patch_auc"]],
+                ["Ensemble (DREAM ∧ PatchCore)", m["ens_prec"], str(m["ens_fp"]), m["ens_rec"], "N/A"],
+            ],
+            caption="Table 6. Model comparison (final).",
+        )
+    else:
+        _add_table(
+            doc,
+            ["Model", "Precision", "FP", "Recall", "ROC AUC"],
+            [
+                ["DREAM", "99.83%", "1", "67.8%", "0.995"],
+                ["PatchCore", "99.82%", "1", "65.5%", "0.994"],
+                ["Ensemble (DREAM ∧ PatchCore)", "100%", "0", "65.2%", "N/A"],
+            ],
+            caption="Table 6. Model comparison (final).",
+        )
 
     _add_heading(doc, "3.3 Hard Subset", 2)
-    doc.add_paragraph(
-        "We evaluated hard cases: light_distortion (normal but illumination-distorted) and micro_crack "
-        "(subtle crack). The ensemble correctly classified all 8 light_distortion as normal and all 2 "
-        "micro_crack as crack."
-    )
-    _add_table(
-        doc,
-        ["Scenario", "Ensemble Result", "Note"],
-        [
-            ["light_distortion", "8/8 (100%)", "Correctly classified as normal"],
-            ["micro_crack", "2/2 (100%)", "Correctly classified as crack"],
-        ],
-        caption="Table 7. Hard subset performance.",
-    )
+    if analysis:
+        hard = _metrics_from_analysis(analysis).get("hard", {})
+        ens_hard = analysis.get("hard_subset_metrics", {}).get("Ensemble", {})
+        ld = ens_hard.get("light_distortion", {})
+        mc = ens_hard.get("micro_crack", {})
+        ld_n = ld.get("n", 0)
+        mc_n = mc.get("n", 0)
+        ld_ok = ld.get("correct_as_normal", int(ld.get("acc", 0) * ld_n))
+        mc_ok = mc.get("correct_as_crack", int(mc.get("acc", 0) * mc_n))
+        doc.add_paragraph(
+            f"We evaluated hard cases: light_distortion (normal but illumination-distorted) and micro_crack "
+            f"(subtle crack). The ensemble correctly classified {ld_ok}/{ld_n} light_distortion as normal "
+            f"and {mc_ok}/{mc_n} micro_crack as crack."
+        )
+        _add_table(
+            doc,
+            ["Scenario", "Ensemble Result", "Note"],
+            [
+                ["light_distortion", f"{ld_ok}/{ld_n} ({100*ld_ok/max(1,ld_n):.0f}%)", "Correctly classified as normal"],
+                ["micro_crack", f"{mc_ok}/{mc_n} ({100*mc_ok/max(1,mc_n):.0f}%)", "Correctly classified as crack"],
+            ],
+            caption="Table 7. Hard subset performance.",
+        )
+    else:
+        doc.add_paragraph(
+            "We evaluated hard cases: light_distortion (normal but illumination-distorted) and micro_crack "
+            "(subtle crack). The ensemble correctly classified all 8 light_distortion as normal and all 2 "
+            "micro_crack as crack."
+        )
+        _add_table(
+            doc,
+            ["Scenario", "Ensemble Result", "Note"],
+            [
+                ["light_distortion", "8/8 (100%)", "Correctly classified as normal"],
+                ["micro_crack", "2/2 (100%)", "Correctly classified as crack"],
+            ],
+            caption="Table 7. Hard subset performance.",
+        )
 
     _add_heading(doc, "3.4 Confusion Matrix (Ensemble)", 2)
-    _add_table(
-        doc,
-        ["", "Predicted Normal", "Predicted Crack"],
-        [
-            ["Actual Normal", "9,638 (TN)", "0 (FP)"],
-            ["Actual Crack", "297 (FN)", "557 (TP)"],
-        ],
-        caption="Table 8. Ensemble confusion matrix. Precision = TP/(TP+FP) = 100%, FP = 0.",
-    )
+    if analysis:
+        m = _metrics_from_analysis(analysis)
+        tn, fp, fn, tp = m["tn"], m["fp"], m["fn"], m["tp"]
+        _add_table(
+            doc,
+            ["", "Predicted Normal", "Predicted Crack"],
+            [
+                ["Actual Normal", f"{tn:,} (TN)", f"{fp} (FP)"],
+                ["Actual Crack", f"{fn} (FN)", f"{tp} (TP)"],
+            ],
+            caption=f"Table 8. Ensemble confusion matrix. Precision = TP/(TP+FP) = {m['ens_prec']}, FP = {fp}.",
+        )
+    else:
+        _add_table(
+            doc,
+            ["", "Predicted Normal", "Predicted Crack"],
+            [
+                ["Actual Normal", "9,638 (TN)", "0 (FP)"],
+                ["Actual Crack", "297 (FN)", "557 (TP)"],
+            ],
+            caption="Table 8. Ensemble confusion matrix. Precision = TP/(TP+FP) = 100%, FP = 0.",
+        )
 
     _add_heading(doc, "3.5 Figures", 2)
     normal_map = analysis_dir / "vector_map_normal.png"
