@@ -1,0 +1,18 @@
+{
+  "input_dir": "data/raw/session_real_001",
+  "fps_source": "fps.txt",
+  "preflight": {
+    "min_points_per_frame": 150,
+    "max_points_per_frame": 500,
+    "max_allowed_missing_frames": 0
+  },
+  "output": {
+    "preflight_report": "reports/preflight/internal_preflight_latest.json",
+    "redacted_log_template": "internal_eval/logs/result_template.csv"
+  },
+  "security": {
+    "allow_raw_coordinate_export": false,
+    "allow_original_frame_export": false,
+    "require_redacted_logs": true
+  }
+}

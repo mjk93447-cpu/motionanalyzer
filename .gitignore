@@ -1,0 +1,48 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+build/
+dist/
+*.spec
+*.egg-info/
+
+# Test output
+test_vis_output/
+
+# Local runtime (excluded)
+logs/
+internal_eval/logs/*.txt
+
+# Reports: keep deliverables and analysis; ignore other generated
+reports/*
+!reports/deliverables/
+!reports/deliverables/**
+!reports/crack_detection_analysis/
+!reports/crack_detection_analysis/**
+!reports/*.md
+!reports/INDEX.md
+!reports/CRACK_DETECTION_FINAL_REPORT.md
+!reports/DETECTION_IMPROVEMENT_STRATEGY.md
+!reports/PRECISION_99_DEVELOPMENT_STRATEGY.md
+!reports/precision_progress_log.md
+!reports/goal_achievement_summary.md
+
+# Data: large, regenerable via scripts
+data/raw/
+data/processed/
+data/synthetic/
+exports/

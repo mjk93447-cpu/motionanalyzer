@@ -1,0 +1,13 @@
+{
+  "strain_cap": 0.03,
+  "curvature_concentration_cap": 8.0,
+  "bend_angle_cap_deg": 180.0,
+  "impact_cap_px_s2": 5000.0,
+  "w_strain": 0.25,
+  "w_stress": 0.20,
+  "w_curvature_concentration": 0.20,
+  "w_bend_angle": 0.15,
+  "w_impact": 0.20,
+  "sigmoid_steepness": 8.0,
+  "sigmoid_center": 0.45
+}

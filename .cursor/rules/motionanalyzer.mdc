@@ -1,0 +1,16 @@
+---
+description: motionanalyzer project rule
+globs:
+  - "src/**/*.py"
+  - "tests/**/*.py"
+alwaysApply: true
+---
+
+# Project Goals (docs/PROJECT_GOALS.md)
+- Goal 1 (highest): Bending-in-process crack detection — temporal, local (velocity change, shockwave, vibration, length change).
+- Goal 2: Already-cracked panel detection — global pattern (subtle property/structure difference).
+
+- Prefer explicit typed functions and deterministic numeric processing.
+- Keep frame-order handling stable by sorting input filenames before parsing.
+- For vector metrics, always document units: pixel, pixel/s, pixel/s^2.
+- Write tests for parser edge cases and numeric calculations.

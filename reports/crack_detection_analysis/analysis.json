@@ -1,0 +1,102 @@
+{
+  "n_test": 10492,
+  "n_normal": 9638,
+  "n_crack": 854,
+  "models": {
+    "DREAM": {
+      "roc_auc": 0.9949395275240036,
+      "best_threshold": 2.995523452758789,
+      "threshold_criterion": "precision_priority",
+      "confusion_matrix": [
+        [
+          9637,
+          1
+        ],
+        [
+          275,
+          579
+        ]
+      ],
+      "tn": 9637,
+      "fp": 1,
+      "fn": 275,
+      "tp": 579
+    },
+    "PatchCore": {
+      "roc_auc": 0.994077040870131,
+      "best_threshold": 13.750259399414062,
+      "threshold_criterion": "precision_priority",
+      "confusion_matrix": [
+        [
+          9637,
+          1
+        ],
+        [
+          295,
+          559
+        ]
+      ],
+      "tn": 9637,
+      "fp": 1,
+      "fn": 295,
+      "tp": 559
+    },
+    "Ensemble": {
+      "roc_auc": 0.0,
+      "best_threshold": 0.0,
+      "threshold_criterion": "both_agree",
+      "confusion_matrix": [
+        [
+          9638,
+          0
+        ],
+        [
+          297,
+          557
+        ]
+      ],
+      "tn": 9638,
+      "fp": 0,
+      "fn": 297,
+      "tp": 557
+    }
+  },
+  "hard_subset_metrics": {
+    "DREAM": {
+      "light_distortion": {
+        "n": 8,
+        "correct_as_normal": 7,
+        "acc": 0.875
+      },
+      "micro_crack": {
+        "n": 2,
+        "correct_as_crack": 2,
+        "acc": 1.0
+      }
+    },
+    "PatchCore": {
+      "light_distortion": {
+        "n": 8,
+        "correct_as_normal": 7,
+        "acc": 0.875
+      },
+      "micro_crack": {
+        "n": 2,
+        "correct_as_crack": 2,
+        "acc": 1.0
+      }
+    },
+    "Ensemble": {
+      "light_distortion": {
+        "n": 8,
+        "correct_as_normal": 8,
+        "acc": 1.0
+      },
+      "micro_crack": {
+        "n": 2,
+        "correct_as_crack": 2,
+        "acc": 1.0
+      }
+    }
+  }
+}
