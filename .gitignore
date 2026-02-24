@@ -38,6 +38,8 @@ reports/*
 !reports/INDEX.md
 !reports/CRACK_DETECTION_FINAL_REPORT.md
 !reports/goal_achievement_summary.md
+!reports/paper_figures/
+!reports/paper_figures/**
 reports/**/*.png
 reports/**/*.pdf
 reports/**/*.docx
