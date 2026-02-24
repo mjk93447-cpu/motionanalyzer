@@ -13,6 +13,7 @@
 | 2026-02-24 | 10k 분석 완료 | Ensemble Precision 99.86%, FP 10 | --max-train 2000, matplotlib 설치 |
 | 2026-02-25 | 30k supplement | train=19950, val=4275, test=4275 | supplement_ml_dataset.py |
 | 2026-02-25 | edge_scorch 추가 | 600개 + diversity 800 | 레이저 테두리 그을림→최외곽 벌어짐 |
+| 2026-02-25 | 연구 검증·정제 | validate_research_methodology, 논문 개선 | edge_scorch hard subset, 참고문헌 서식 |
 
 ---
 

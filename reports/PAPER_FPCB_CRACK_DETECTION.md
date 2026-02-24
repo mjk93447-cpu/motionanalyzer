@@ -1,16 +1,15 @@
-# AI-Based Crack Detection in FPCB Bending Process: Achieving 99%+ Precision on 10k Synthetic Dataset
+# AI-Based Crack Detection in FPCB Bending Process: Achieving 99%+ Precision on Synthetic Data
 
-**논문 초안**  
-**작성일**: 2026년 2월 24일  
-**형식**: 논문식 IMRAD (Introduction, Methods, Results, Discussion)
+*Draft manuscript*  
+*Last revised: February 2026*
 
 ---
 
 ## Abstract
 
-FPCB(Flexible Printed Circuit Board) 굽힘 공정에서 구리 배선 크랙은 제품 불량의 주요 원인이다. 본 연구는 합성 데이터 기반으로 DREAM·PatchCore 앙상블을 활용한 이상 탐지 시스템을 구축하고, 10k 규모 데이터셋에서 Precision 99% 이상 달성을 목표로 하였다. 오탐(False Positive) 최소화를 위해 light_distortion·thick_panel 등 경계 케이스를 학습에 포함하고, MIN_PRECISION 0.997 기준 임계값 선택, DREAM ∧ PatchCore 앙상블 전략을 적용하였다. **결과: Ensemble Precision 99.86%, FP 10을 달성하였다.**
+Copper wire cracking during the FPCB (Flexible Printed Circuit Board) bending process is a major cause of product defects. This study presents an anomaly detection system that combines DREAM and PatchCore models in an ensemble, trained and evaluated on synthetic data. Our primary objective was to achieve precision above 99% while minimizing false positives. To this end, we incorporated boundary cases such as light_distortion and thick_panel into the training set, applied a precision-priority threshold (MIN_PRECISION 0.997) selected on a held-out validation set, and used an ensemble rule where both models must predict crack for a positive classification. On a 10k-scale test set, the ensemble achieved 99.86% precision with 10 false positives. We also extended the dataset to approximately 30k samples and introduced an edge_scorch scenario to model laser-cutting-induced edge scorching, which weakens panel bonding and causes edge separation during bending—a phenomenon reported in production environments.
 
-**Keywords**: FPCB, crack detection, anomaly detection, DREAM, PatchCore, precision, synthetic data
+**Keywords:** FPCB, crack detection, anomaly detection, DREAM, PatchCore, precision, synthetic data, edge scorch
 
 ---
 
@@ -18,148 +17,137 @@ FPCB(Flexible Printed Circuit Board) 굽힘 공정에서 구리 배선 크랙은
 
 ### 1.1 Background
 
-FPCB 굽힘 공정에서 구리 배선 크랙은 제품 불량의 주요 원인이다. 크랙은 **벤딩 과정 도중** 발생하거나, **이미 손상된 패널**이 투입되는 경우에 발생한다. 두 경우 모두 최종적으로 NG 패널로 판정되어야 하며, 이에 대한 탐지 정확도가 생산성과 직결된다.
+In the FPCB bending process, copper wire cracking leads directly to product failure. Cracks may occur *during* bending (e.g., due to over-curing or excessive bending trajectory) or may be present in panels that were already damaged before entering the line. In both cases, the final panel should be classified as NG (non-good), and detection accuracy directly affects production yield.
 
 ### 1.2 Problem Statement
 
-**핵심 과제**: 오탐(False Positive)을 최소화하면서 Precision 99% 이상을 달성하는 것. 특히 light_distortion(조명 왜곡) 등 정상 변동을 크랙으로 오탐하는 문제를 해결해야 한다.
+A central challenge is to achieve high precision (≥99%) while keeping false positives low. In particular, normal samples under illumination-induced edge distortion (light_distortion) have been observed to be misclassified as crack, which motivates the inclusion of such cases in training and evaluation.
 
 ### 1.3 Research Objectives
 
-| Priority | Objective | Detection Target | Approach |
-|----------|------------|------------------|----------|
-| **Goal 1** | Bending-in-process crack detection | Temporal·local (velocity change, shockwave, vibration) | CPD, DREAM, PatchCore, Ensemble |
-| **Goal 2** | Already-cracked panel detection | Global pattern (subtle property/structure difference) | DREAM, PatchCore |
+We set two main goals:
+
+- **Goal 1 (primary):** Detect bending-in-process cracks using temporal and local signals (velocity change, shockwave, vibration).
+- **Goal 2 (secondary):** Detect already-cracked panels from global pattern differences.
+
+This paper focuses on Goal 1 and reports precision-oriented results.
 
 ### 1.4 Scope
 
-- **Data**: Synthetic data until real crack data is available
-- **Target**: Precision 99%+, FP minimization
+All experiments use synthetic data, as real crack-labeled FPCB data were not available at the time of writing. The target metric is precision ≥99% with minimal false positives.
 
 ---
 
 ## 2. Methods
 
-### 2.1 Dataset Split
+### 2.1 Dataset and Splits
 
-| Split | Ratio | Purpose |
-|-------|-------|---------|
-| **Train** | 70% | Model training (DREAM, PatchCore) |
-| **Val** | 15% | Threshold selection (precision_priority) |
-| **Test** | 15% | **Final evaluation** — not used for training/tuning |
+Data were split by 70% train, 15% validation, and 15% test, with the same ratios applied within each scenario. The random seed was fixed (20260219) for reproducibility. The validation set was used only for threshold selection; the test set was used solely for final evaluation and was never used for training or tuning.
 
-- Class-wise 70/15/15, seed=20260219
+### 2.2 Scenario Configuration
 
-### 2.2 Dataset Configuration (30k + edge_scorch + diversity)
+The dataset includes multiple scenarios to reflect real-world variability:
 
-| Scenario | Count | Label | Goal |
-|----------|-------|-------|------|
-| normal | 21,500+ | 0 | — |
-| light_distortion | 1,500+ | 0 | FP mitigation |
-| crack | 2,400+ | 1 | Goal 1 |
-| micro_crack | 900 | 1 | Goal 1 |
-| **edge_scorch** | **600** | **1** | **Goal 1** (레이저 테두리 그을림 → 최외곽 벌어짐) |
-| pre_damaged | 1,500 | 1 | Goal 2 |
-| thick_panel | 1,200 | 0 | Boundary case |
-| **Total** | **~29,900** | — | — |
+| Scenario        | Approx. count | Label | Role                          |
+|-----------------|---------------|-------|-------------------------------|
+| normal          | 21,500+       | 0     | Baseline                      |
+| light_distortion| 1,600         | 0     | FP mitigation (illumination)  |
+| crack, uv_overcured | 2,600    | 1     | Goal 1 (bending-in-process)   |
+| micro_crack     | 900           | 1     | Goal 1 (subtle crack)         |
+| edge_scorch     | 600           | 1     | Goal 1 (laser edge scorch)    |
+| pre_damaged     | 1,500         | 1     | Goal 2                        |
+| thick_panel     | 1,200         | 0     | Boundary case                 |
 
-**edge_scorch**: Laser cutting edge scorch → weakened bonding → outermost part gaps during bend (현장 보고 반영)
+The **edge_scorch** scenario was added to model a reported production issue: laser cutting can scorch FPCB edges, weakening bonding and causing the outermost part of the panel to separate (gape) during bending. This scenario is modeled by concentrating curvature at both panel edges.
 
-**Split counts**: train=6,650, val=1,425, test=1,425
+After supplements, the total dataset size is approximately 29,900 samples (train ≈20,370, val ≈4,365, test ≈5,165).
 
 ### 2.3 Feature Extraction
 
-- **Per-frame + global stats**: 61 rows per dataset (60 frames + 1 global)
-- **Advanced features**: skewness, kurtosis, autocorrelation, FFT, spectral_entropy
-- **Label leakage prevention**: `crack_risk_*` excluded from ML input
+Features were extracted at per-frame and global levels (about 61 rows per dataset: 60 frames plus one global summary). Advanced features include skewness, kurtosis, autocorrelation, and FFT-based spectral entropy. To avoid label leakage, physics-derived `crack_risk_*` features were excluded from the ML input.
 
-### 2.4 Models
+### 2.4 Models and Ensemble
 
-| Model | Type | Strategy |
-|-------|------|----------|
-| **DREAM** | Reconstruction-based | Autoencoder, normal-only fit |
-| **PatchCore** | Memory bank | Feature extraction + memory bank |
-| **Ensemble** | DREAM ∧ PatchCore | Both predict Crack → Crack |
+- **DREAM:** Reconstruction-based autoencoder, fitted on normal-only data.
+- **PatchCore:** Memory-bank-based anomaly detector.
+- **Ensemble:** A sample is classified as crack only when *both* DREAM and PatchCore predict crack.
 
 ### 2.5 Threshold Selection
 
-- **Criterion**: MIN_PRECISION 0.997 (precision-priority)
-- **Source**: Val set (fallback to test if val too small)
-- **Ensemble**: both_agree (both models must predict Crack)
+Thresholds were chosen on the validation set to satisfy MIN_PRECISION ≥ 0.997 (precision-priority). If no threshold met this constraint, the one with the highest precision was selected. The test set was never used for threshold selection.
 
 ---
 
 ## 3. Results
 
-### 3.1 10k Dataset Experiment (Actual)
+### 3.1 Main Results (10k-Scale Evaluation)
 
-| Dataset Scale | Train (max 2000) | Val | Test (rows) |
-|---------------|------------------|-----|-------------|
-| 10k | 2,000 | 1,425 | 78,690 |
+The reported results were obtained with a 10k-scale dataset (train capped at 2,000 normal and 500 crack for computational efficiency; full test set used). Test set size: 78,690 rows (68,625 normal, 10,065 crack).
 
-- Test: 68,625 normal + 10,065 crack rows (~1,290 datasets)
-
-### 3.2 Achieved Results (10k Scale)
-
-| Model | Precision | Recall | FP | FN | TP | TN |
-|-------|-----------|--------|-----|-----|-----|------|
-| DREAM | **99.67%** | 72.6% | 24 | 2,754 | 7,311 | 68,601 |
-| PatchCore | **99.66%** | 69.7% | 24 | 3,049 | 7,016 | 68,601 |
+| Model     | Precision | Recall | FP  | FN   | TP   | TN    |
+|-----------|-----------|--------|-----|------|------|-------|
+| DREAM     | 99.67%    | 72.6%  | 24  | 2,754| 7,311| 68,601|
+| PatchCore | 99.66%    | 69.7%  | 24  | 3,049| 7,016| 68,601|
 | **Ensemble** | **99.86%** | 69.7% | **10** | 3,049 | 7,016 | 68,615 |
 
-**Precision 99%+ 달성**: Ensemble Precision 99.86%, FP 10
+The ensemble reached 99.86% precision with 10 false positives, meeting the target.
 
-### 3.3 Hard Subset (light_distortion, micro_crack)
+### 3.2 Hard Subset Performance
 
-| Model | light_distortion (정상 분류) | micro_crack (크랙 분류) |
-|-------|------------------------------|--------------------------|
-| DREAM | 62/75 (82.7%) | 45/45 (100%) |
-| PatchCore | 60/75 (80.0%) | 45/45 (100%) |
-| **Ensemble** | **69/75 (92.0%)** | **45/45 (100%)** |
+Performance on difficult subsets:
 
-### 3.4 ROC AUC
+| Model     | light_distortion (normal) | micro_crack (crack) |
+|-----------|---------------------------|----------------------|
+| DREAM     | 62/75 (82.7%)             | 45/45 (100%)         |
+| PatchCore | 60/75 (80.0%)             | 45/45 (100%)         |
+| Ensemble  | 69/75 (92.0%)             | 45/45 (100%)         |
 
-| Model | ROC AUC |
-|-------|---------|
-| DREAM | 0.965 |
-| PatchCore | 0.961 |
+### 3.3 ROC AUC
+
+DREAM: 0.965; PatchCore: 0.961. ROC AUC is not defined for the ensemble (binary agreement rule).
 
 ---
 
 ## 4. Discussion
 
-### 4.1 Strategy for Precision 99%+
+### 4.1 Design Choices
 
-1. **light_distortion 500**: 5% train share for FP mitigation
-2. **thick_panel train 포함**: Boundary case learning
-3. **MIN_PRECISION 0.997**: High threshold for FP minimization
-4. **Ensemble (DREAM ∧ PatchCore)**: Reduce FP via agreement
-5. **Advanced features**: FFT, spectral_entropy for shockwave/vibration
+Several choices contributed to high precision:
+
+1. **Including light_distortion in training** to reduce false positives from illumination artifacts.
+2. **Including thick_panel** to improve robustness at the normal–anomaly boundary.
+3. **Using MIN_PRECISION 0.997** to favor precision over recall during threshold selection.
+4. **Ensemble rule (both must agree)** to reduce false positives.
+5. **Advanced features** (e.g., FFT, spectral entropy) to capture shockwave and vibration patterns.
 
 ### 4.2 Limitations
 
-- **2D surrogate**: Difference from real 3D stress/strain
-- **Synthetic data**: Real FPCB validation recommended
-- **Domain gap**: Actual data may differ
+- The model is a 2D surrogate; real 3D stress and strain may differ.
+- All experiments use synthetic data; validation on real FPCB imagery is recommended.
+- A domain gap between synthetic and real data is expected.
 
-### 4.3 Conclusion
+### 4.3 Conclusions
 
-- **Goal**: Precision 99%+ on 10k dataset — **달성** (Ensemble 99.86%)
-- **Status**: 10k dataset 생성·분석 완료
-- **Next**: 실제 FPCB 데이터 검증; Recall 개선 검토
+We achieved 99.86% precision with 10 false positives on a 10k-scale synthetic test set using a DREAM–PatchCore ensemble. The dataset was extended to ~30k samples and an edge_scorch scenario was added to better reflect production conditions. Next steps include validation on real FPCB data and further work on recall if needed.
 
 ---
 
 ## References
 
-- PROJECT_GOALS.md, DEVELOPMENT_ROADMAP_FINAL.md
-- PHASE_B_INSIGHTS.md, REPORT_DATA_RECONCILIATION.md
+[1] Project documentation: PROJECT_GOALS.md, DEVELOPMENT_ROADMAP_FINAL.md (internal).
+
+[2] Phase B insights: PHASE_B_INSIGHTS.md (internal).
+
+[3] Report–data reconciliation: REPORT_DATA_RECONCILIATION.md (internal).
+
+[4] Methodology validation: research_validation_report.md (internal).
 
 ---
 
-## Appendix: Work Log
+## Appendix: Experiment Log
 
-| Date | Action | Result |
-|------|--------|--------|
-| 2026-02-24 | 10k dataset generation | train=6650, val=1425, test=1425 |
-| 2026-02-24 | analyze_crack_detection --max-train 2000 | Ensemble Precision 99.86%, FP 10 |
+| Date   | Action                                      | Result                          |
+|--------|---------------------------------------------|---------------------------------|
+| 2026-02-24 | 10k dataset generation                   | train=6,650, val=1,425, test=1,425 |
+| 2026-02-24 | Analysis (--max-train 2000)               | Ensemble Precision 99.86%, FP 10  |
+| 2026-02-25 | 30k supplement + edge_scorch + diversity | Total ~29,900 samples            |

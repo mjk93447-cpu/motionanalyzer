@@ -108,12 +108,15 @@ def _run_evaluation_and_get_predictions(max_train: int | None = None) -> tuple[d
     crack_val = [BASE / e["path"] for e in entries if e["goal"] == "goal1" and e["split"] == "val"]
     crack_test = [BASE / e["path"] for e in entries if e["goal"] == "goal1" and e["split"] == "test"]
 
-    # Hard subset: light_distortion (normal) + micro_crack (crack) for per-scenario evaluation
-    # edge_scorch included in crack_train/crack_test via goal1
+    # Hard subset: light_distortion (normal) + micro_crack, edge_scorch (crack) for per-scenario evaluation
     hard_normal_paths = {str((BASE / e["path"]).resolve()) for e in entries if e.get("scenario") == "light_distortion" and e["split"] == "test"}
-    hard_crack_paths = {str((BASE / e["path"]).resolve()) for e in entries if e.get("scenario") == "micro_crack" and e["split"] == "test"}
+    hard_crack_paths = {str((BASE / e["path"]).resolve()) for e in entries if e.get("scenario") in ("micro_crack", "edge_scorch") and e["split"] == "test"}
+    hard_crack_paths_by_scenario = {
+        "micro_crack": [BASE / e["path"] for e in entries if e.get("scenario") == "micro_crack" and e["split"] == "test"],
+        "edge_scorch": [BASE / e["path"] for e in entries if e.get("scenario") == "edge_scorch" and e["split"] == "test"],
+    }
     hard_normal_list = [BASE / e["path"] for e in entries if e.get("scenario") == "light_distortion" and e["split"] == "test"]
-    hard_crack_list = [BASE / e["path"] for e in entries if e.get("scenario") == "micro_crack" and e["split"] == "test"]
+    hard_crack_list = [BASE / e["path"] for e in entries if e.get("scenario") in ("micro_crack", "edge_scorch") and e["split"] == "test"]
 
     from motionanalyzer.auto_optimize import (
         FeatureExtractionConfig,
@@ -269,6 +272,7 @@ def _run_evaluation_and_get_predictions(max_train: int | None = None) -> tuple[d
         "hard_crack_list": hard_crack_list,
         "hard_normal_paths": hard_normal_paths,
         "hard_crack_paths": hard_crack_paths,
+        "hard_crack_paths_by_scenario": hard_crack_paths_by_scenario,
     }
 
 
@@ -368,20 +372,22 @@ def _compute_hard_subset_metrics(
     preds: dict,
     hard_normal_paths: set,
     hard_crack_paths: set,
+    hard_crack_paths_by_scenario: dict[str, set] | None = None,
 ) -> dict:
-    """Compute per-dataset metrics for light_distortion and micro_crack subsets."""
+    """Compute per-dataset metrics for light_distortion, micro_crack, edge_scorch subsets."""
     if "dataset_path" not in feat_test.columns:
         return {}
     out: dict = {}
+    ld_paths = {str(Path(p).resolve()) for p in hard_normal_paths}
+    mc_paths = {str(Path(p).resolve()) for p in hard_crack_paths}
+    by_scenario = hard_crack_paths_by_scenario or {}
+
     for model_name, pred in preds.items():
         if pred is None:
             continue
         df = feat_test.copy()
         df["pred"] = pred
         df["path_norm"] = df["dataset_path"].apply(lambda p: str(Path(p).resolve()))
-
-        ld_paths = {str(Path(p).resolve()) for p in hard_normal_paths}
-        mc_paths = {str(Path(p).resolve()) for p in hard_crack_paths}
 
         ld_rows = df[df["path_norm"].isin(ld_paths)]
         mc_rows = df[df["path_norm"].isin(mc_paths)]
@@ -393,10 +399,18 @@ def _compute_hard_subset_metrics(
         ld_correct = int(np.sum(ld_agg["pred"] == 0)) if n_ld else 0
         mc_correct = int(np.sum(mc_agg["pred"] == 1)) if n_mc else 0
 
-        out[model_name] = {
+        model_out = {
             "light_distortion": {"n": n_ld, "correct_as_normal": int(ld_correct), "acc": float(ld_correct / n_ld) if n_ld else 0.0},
             "micro_crack": {"n": n_mc, "correct_as_crack": int(mc_correct), "acc": float(mc_correct / n_mc) if n_mc else 0.0},
         }
+        for scen_name, scen_paths in by_scenario.items():
+            sp = {str(Path(p).resolve()) for p in scen_paths} if scen_paths else set()
+            sr = df[df["path_norm"].isin(sp)]
+            n_s = sr["path_norm"].nunique() if len(sr) else 0
+            sa = sr.groupby("path_norm").agg({"label": "first", "pred": "max"}).reset_index(drop=True) if len(sr) else pd.DataFrame()
+            s_correct = int(np.sum(sa["pred"] == 1)) if n_s else 0
+            model_out[scen_name] = {"n": n_s, "correct_as_crack": int(s_correct), "acc": float(s_correct / n_s) if n_s else 0.0}
+        out[model_name] = model_out
     return out
 
 
@@ -419,14 +433,16 @@ def main() -> None:
     print("\n[1/5] Running Goal 1 ML evaluation (DREAM, PatchCore)...")
     results, preds, y_test, feat_test, hard_info = _run_evaluation_and_get_predictions(max_train=args.max_train)
 
-    # 2. Hard subset metrics (light_distortion, micro_crack)
+    # 2. Hard subset metrics (light_distortion, micro_crack, edge_scorch)
     hard_metrics = {}
     if hard_info["hard_normal_paths"] or hard_info["hard_crack_paths"]:
-        print("[2/5] Computing hard subset metrics (light_distortion, micro_crack)...")
+        print("[2/5] Computing hard subset metrics (light_distortion, micro_crack, edge_scorch)...")
+        by_scen = hard_info.get("hard_crack_paths_by_scenario", {})
         hard_metrics = _compute_hard_subset_metrics(
             feat_test, preds,
             hard_info["hard_normal_paths"],
             hard_info["hard_crack_paths"],
+            hard_crack_paths_by_scenario=by_scen if by_scen else None,
         )
 
     # 3. Confusion matrix heatmaps
@@ -435,14 +451,15 @@ def main() -> None:
         cm = np.array(model_res["confusion_matrix"])
         _plot_confusion_matrix(cm, model_name, OUT_DIR / f"confusion_matrix_{model_name.lower()}.png")
 
-    # 4. Vector maps (normal vs crack sample)
+    # 4. Vector maps (normal, crack, edge_scorch samples)
     print("[4/5] Creating vector map images...")
-    normal_sample = BASE / "normal" / "normal_0001"
-    crack_sample = BASE / "crack_in_bending" / "crack_0001"
-    if normal_sample.exists():
-        _create_vector_map(normal_sample, OUT_DIR / "vector_map_normal.png")
-    if crack_sample.exists():
-        _create_vector_map(crack_sample, OUT_DIR / "vector_map_crack.png")
+    for name, sample_path in [
+        ("normal", BASE / "normal" / "normal_0001"),
+        ("crack", BASE / "crack_in_bending" / "crack_0001"),
+        ("edge_scorch", BASE / "edge_scorch" / "edge_scorch_00001"),
+    ]:
+        if sample_path.exists():
+            _create_vector_map(sample_path, OUT_DIR / f"vector_map_{name}.png")
 
     # 5. Save JSON and insights
     print("[5/5] Writing analysis report...")
@@ -486,18 +503,21 @@ def main() -> None:
         ])
     if hard_metrics:
         insights.extend([
-            "## 2. Hard Subset (light_distortion, micro_crack)",
+            "## 2. Hard Subset (light_distortion, micro_crack, edge_scorch)",
             "",
         ])
         for model_name, hm in hard_metrics.items():
             ld = hm.get("light_distortion", {})
             mc = hm.get("micro_crack", {})
-            insights.extend([
+            es = hm.get("edge_scorch", {})
+            lines = [
                 f"### {model_name}",
                 f"- **light_distortion** (정상+조명왜곡): {ld.get('correct_as_normal', 0)}/{ld.get('n', 0)} 정상으로 정확 분류, acc={ld.get('acc', 0):.2%}",
                 f"- **micro_crack** (초미세 크랙): {mc.get('correct_as_crack', 0)}/{mc.get('n', 0)} 크랙으로 정확 분류, acc={mc.get('acc', 0):.2%}",
-                "",
-            ])
+            ]
+            if es.get("n", 0) > 0:
+                lines.append(f"- **edge_scorch** (레이저 테두리 그을림): {es.get('correct_as_crack', 0)}/{es.get('n', 0)} 크랙으로 정확 분류, acc={es.get('acc', 0):.2%}")
+            insights.extend(lines + [""])
         insights.extend([
             "## 3. Vector Map Interpretation",
             "",
