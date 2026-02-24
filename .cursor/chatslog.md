@@ -15,6 +15,7 @@
 | 2026-02-25 | edge_scorch 추가 | 600개 + diversity 800 | 레이저 테두리 그을림→최외곽 벌어짐 |
 | 2026-02-25 | 연구 검증·정제 | validate_research_methodology, 논문 개선 | edge_scorch hard subset, 참고문헌 서식 |
 | 2026-02-25 | 논문 전문 평가·정제 | 유사논문 비교, 그림 생성, 5회 iterative refinement | PAPER_FPCB_CRACK_DETECTION.md, paper_figures/, LITERATURE_COMPARISON_EVALUATION.md |
+| 2026-02-25 | 논문 종합 평가·4+ 정제 | 데이터 신뢰성, 분석흐름, 연구방법, 완성도 평가 | PAPER_COMPREHENSIVE_EVALUATION, 10회 iterative refinement, REPORT_DATA_RECONCILIATION 갱신 |
 
 ---
 
@@ -61,7 +62,8 @@ python3 scripts/analyze_crack_detection.py --max-train 5000
 
 - `reports/REPORT_DATA_RECONCILIATION.md`: 보고서-데이터 관계
 - `reports/IMRAD_SUMMARY.md`: 논문 요약
-- `reports/PAPER_FPCB_CRACK_DETECTION.md`: **논문 초안 (5회 정제, 유사논문 비교·그림 포함)**
+- `reports/PAPER_FPCB_CRACK_DETECTION.md`: **논문 (10회 정제, 실제 데이터 기반, 객관적·신뢰 가능)**
+- `reports/PAPER_COMPREHENSIVE_EVALUATION.md`: 논문 종합 평가 (데이터 신뢰성, 분석흐름, 연구방법)
 - `reports/LITERATURE_COMPARISON_EVALUATION.md`: 유사논문 전문 평가
 - `reports/paper_figures/`: 논문용 그림 (methodology, confusion, PR, comparison, scenario)
 - `docs/PROJECT_GOALS.md`: 프로젝트 목표
