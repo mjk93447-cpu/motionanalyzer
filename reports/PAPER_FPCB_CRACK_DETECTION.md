@@ -8,7 +8,7 @@
 
 ## Abstract
 
-FPCB(Flexible Printed Circuit Board) 굽힘 공정에서 구리 배선 크랙은 제품 불량의 주요 원인이다. 본 연구는 합성 데이터 기반으로 DREAM·PatchCore 앙상블을 활용한 이상 탐지 시스템을 구축하고, 10k 규모 데이터셋에서 Precision 99% 이상 달성을 목표로 한다. 오탐(False Positive) 최소화를 위해 light_distortion·thick_panel 등 경계 케이스를 학습에 포함하고, MIN_PRECISION 0.997 기준 임계값 선택, DREAM ∧ PatchCore 앙상블 전략을 적용하였다. 결과는 10k 데이터셋 분석 완료 후 갱신된다.
+FPCB(Flexible Printed Circuit Board) 굽힘 공정에서 구리 배선 크랙은 제품 불량의 주요 원인이다. 본 연구는 합성 데이터 기반으로 DREAM·PatchCore 앙상블을 활용한 이상 탐지 시스템을 구축하고, 10k 규모 데이터셋에서 Precision 99% 이상 달성을 목표로 하였다. 오탐(False Positive) 최소화를 위해 light_distortion·thick_panel 등 경계 케이스를 학습에 포함하고, MIN_PRECISION 0.997 기준 임계값 선택, DREAM ∧ PatchCore 앙상블 전략을 적용하였다. **결과: Ensemble Precision 99.86%, FP 10을 달성하였다.**
 
 **Keywords**: FPCB, crack detection, anomaly detection, DREAM, PatchCore, precision, synthetic data
 
@@ -89,32 +89,38 @@ FPCB 굽힘 공정에서 구리 배선 크랙은 제품 불량의 주요 원인�
 
 ## 3. Results
 
-### 3.1 10k Dataset Experiment
+### 3.1 10k Dataset Experiment (Actual)
 
-*Analysis in progress. Results will be updated upon completion.*
+| Dataset Scale | Train (max 2000) | Val | Test (rows) |
+|---------------|------------------|-----|-------------|
+| 10k | 2,000 | 1,425 | 78,690 |
 
-| Dataset Scale | Train | Val | Test |
-|---------------|-------|-----|------|
-| 10k | 6,650 | 1,425 | 1,425 |
+- Test: 68,625 normal + 10,065 crack rows (~1,290 datasets)
 
-### 3.2 Expected Outcomes (from Strategy)
+### 3.2 Achieved Results (10k Scale)
 
-| Metric | Target |
-|--------|--------|
-| Precision | ≥ 99% |
-| FP | 0 (minimize) |
-| light_distortion | 100% correct as normal |
-| micro_crack | 100% correct as crack |
+| Model | Precision | Recall | FP | FN | TP | TN |
+|-------|-----------|--------|-----|-----|-----|------|
+| DREAM | **99.67%** | 72.6% | 24 | 2,754 | 7,311 | 68,601 |
+| PatchCore | **99.66%** | 69.7% | 24 | 3,049 | 7,016 | 68,601 |
+| **Ensemble** | **99.86%** | 69.7% | **10** | 3,049 | 7,016 | 68,615 |
 
-### 3.3 Previous Results (Small Scale)
+**Precision 99%+ 달성**: Ensemble Precision 99.86%, FP 10
 
-| Model | Precision | Recall | FP |
-|-------|-----------|--------|-----|
-| DREAM | 71.9% | 37.7% | 27 |
-| PatchCore | 70.0% | 38.3% | 30 |
-| Ensemble | 77.3% | 37.2% | 20 |
+### 3.3 Hard Subset (light_distortion, micro_crack)
 
-*Note: Small scale ~19 test datasets. 10k scale expected to improve with more training data.*
+| Model | light_distortion (정상 분류) | micro_crack (크랙 분류) |
+|-------|------------------------------|--------------------------|
+| DREAM | 62/75 (82.7%) | 45/45 (100%) |
+| PatchCore | 60/75 (80.0%) | 45/45 (100%) |
+| **Ensemble** | **69/75 (92.0%)** | **45/45 (100%)** |
+
+### 3.4 ROC AUC
+
+| Model | ROC AUC |
+|-------|---------|
+| DREAM | 0.965 |
+| PatchCore | 0.961 |
 
 ---
 
@@ -136,9 +142,9 @@ FPCB 굽힘 공정에서 구리 배선 크랙은 제품 불량의 주요 원인�
 
 ### 4.3 Conclusion
 
-- **Goal**: Precision 99%+ on 10k dataset
-- **Status**: 10k dataset generated; analysis running
-- **Next**: Update results upon analysis completion; real-data validation
+- **Goal**: Precision 99%+ on 10k dataset — **달성** (Ensemble 99.86%)
+- **Status**: 10k dataset 생성·분석 완료
+- **Next**: 실제 FPCB 데이터 검증; Recall 개선 검토
 
 ---
 
@@ -154,4 +160,4 @@ FPCB 굽힘 공정에서 구리 배선 크랙은 제품 불량의 주요 원인�
 | Date | Action | Result |
 |------|--------|--------|
 | 2026-02-24 | 10k dataset generation | train=6650, val=1425, test=1425 |
-| 2026-02-24 | analyze_crack_detection --max-train 3000 | In progress |
+| 2026-02-24 | analyze_crack_detection --max-train 2000 | Ensemble Precision 99.86%, FP 10 |

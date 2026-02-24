@@ -1,45 +1,45 @@
 {
-  "n_test": 1159,
-  "n_normal": 976,
-  "n_crack": 183,
+  "n_test": 78690,
+  "n_normal": 68625,
+  "n_crack": 10065,
   "models": {
     "DREAM": {
-      "roc_auc": 0.8945343993550121,
-      "best_threshold": 3.949352741241455,
+      "roc_auc": 0.9651480929513716,
+      "best_threshold": 1.491373062133789,
       "threshold_criterion": "precision_priority (val)",
       "confusion_matrix": [
         [
-          949,
-          27
+          68601,
+          24
         ],
         [
-          114,
-          69
+          2754,
+          7311
         ]
       ],
-      "tn": 949,
-      "fp": 27,
-      "fn": 114,
-      "tp": 69
+      "tn": 68601,
+      "fp": 24,
+      "fn": 2754,
+      "tp": 7311
     },
     "PatchCore": {
-      "roc_auc": 0.9285642300456867,
-      "best_threshold": 14.116621971130371,
+      "roc_auc": 0.9606213991568466,
+      "best_threshold": 13.031614303588867,
       "threshold_criterion": "precision_priority (val)",
       "confusion_matrix": [
         [
-          946,
-          30
+          68601,
+          24
         ],
         [
-          113,
-          70
+          3049,
+          7016
         ]
       ],
-      "tn": 946,
-      "fp": 30,
-      "fn": 113,
-      "tp": 70
+      "tn": 68601,
+      "fp": 24,
+      "fn": 3049,
+      "tp": 7016
     },
     "Ensemble": {
       "roc_auc": 0.0,
@@ -47,54 +47,54 @@
       "threshold_criterion": "both_agree",
       "confusion_matrix": [
         [
-          956,
-          20
+          68615,
+          10
         ],
         [
-          115,
-          68
+          3049,
+          7016
         ]
       ],
-      "tn": 956,
-      "fp": 20,
-      "fn": 115,
-      "tp": 68
+      "tn": 68615,
+      "fp": 10,
+      "fn": 3049,
+      "tp": 7016
     }
   },
   "hard_subset_metrics": {
     "DREAM": {
       "light_distortion": {
-        "n": 1,
-        "correct_as_normal": 0,
-        "acc": 0.0
+        "n": 75,
+        "correct_as_normal": 62,
+        "acc": 0.8266666666666667
       },
       "micro_crack": {
-        "n": 1,
-        "correct_as_crack": 1,
+        "n": 45,
+        "correct_as_crack": 45,
         "acc": 1.0
       }
     },
     "PatchCore": {
       "light_distortion": {
-        "n": 1,
-        "correct_as_normal": 0,
-        "acc": 0.0
+        "n": 75,
+        "correct_as_normal": 60,
+        "acc": 0.8
       },
       "micro_crack": {
-        "n": 1,
-        "correct_as_crack": 1,
+        "n": 45,
+        "correct_as_crack": 45,
         "acc": 1.0
       }
     },
     "Ensemble": {
       "light_distortion": {
-        "n": 1,
-        "correct_as_normal": 0,
-        "acc": 0.0
+        "n": 75,
+        "correct_as_normal": 69,
+        "acc": 0.92
       },
       "micro_crack": {
-        "n": 1,
-        "correct_as_crack": 1,
+        "n": 45,
+        "correct_as_crack": 45,
         "acc": 1.0
       }
     }

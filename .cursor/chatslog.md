@@ -10,6 +10,7 @@
 |------|------|------|------|
 | 2026-02-24 | 로그 생성 | .cursor/chatslog.md 생성 | 자율 작업 시작 |
 | 2026-02-24 | 10k 데이터셋 생성 | train=6650, val=1425, test=1425 | --scale 10k --workers 4, ~160초 |
+| 2026-02-24 | 10k 분석 완료 | Ensemble Precision 99.86%, FP 10 | --max-train 2000, matplotlib 설치 |
 
 ---
 
@@ -24,12 +25,12 @@
 - [x] manifest 검증 (train=6650, val=1425, test=1425)
 
 ### Phase 3: Precision 99%+ 달성
-- [~] analyze_crack_detection.py --max-train 3000 실행 중 (백그라운드)
-- [ ] 결과 확인 후 필요 시 파라미터 조정
+- [x] analyze_crack_detection.py --max-train 2000 실행 완료
+- [x] **Ensemble Precision 99.86%, FP 10** 달성
 
 ### Phase 4: 논문 정리
 - [x] IMRAD 형식 논문 작성 (`reports/PAPER_FPCB_CRACK_DETECTION.md`)
-- [ ] 분석 완료 후 결과 반영
+- [x] 10k 결과 반영 완료
 
 ---
 
@@ -37,8 +38,8 @@
 
 | 일시 | 작업 | 결과 |
 |------|------|------|
-| 2026-02-24 | 논문 초안 작성 | PAPER_FPCB_CRACK_DETECTION.md 생성 |
-| 2026-02-24 | 분석 실행 | analyze_crack_detection --max-train 3000 (백그라운드) |
+| 2026-02-24 | 10k 분석 완료 | DREAM 99.67%, PatchCore 99.66%, **Ensemble 99.86%** |
+| 2026-02-24 | 논문 결과 갱신 | PAPER_FPCB_CRACK_DETECTION.md 실제 결과 반영 |
 
 ---
 

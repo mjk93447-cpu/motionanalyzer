@@ -9,16 +9,24 @@
 
 | 구분 | 상태 | 비고 |
 |------|------|------|
-| **실제 데이터셋** | ✅ 존재 (`data/synthetic/ml_dataset`) | `--small` 스케일로 생성됨 |
-| **analysis.json** | ⚠️ 이전 실행 결과 | n_test=1159, 현재 workspace 데이터와 **scale 불일치** |
-| **CRACK_DETECTION_FINAL_REPORT** | ⚠️ 다른 실행/목표 기준 | Precision 100%, FP 0 — 실제 analysis.json과 **불일치** |
-| **DATASET_AND_EXPERIMENT_SPEC** | 설계 기반 | 실제 데이터 없이 **코드/설계** 기준 작성 |
+| **실제 데이터셋** | ✅ 존재 (`data/synthetic/ml_dataset`) | **10k 스케일** (train=6650, val=1425, test=1425) |
+| **analysis.json** | ✅ 10k 실행 결과 | n_test=78,690, Ensemble Precision **99.86%**, FP 10 |
+| **CRACK_DETECTION_FINAL_REPORT** | ⚠️ 다른 실행 기준 | Precision 100%, FP 0 — 10k 결과(99.86%, FP 10)와 상이 |
+| **PAPER_FPCB_CRACK_DETECTION** | ✅ 10k 기반 | 논문 초안, 실제 결과 반영 |
 
 ---
 
-## 2. 실제 데이터셋 현황 (2026-02-24 생성)
+## 2. 실제 데이터셋 현황
 
-### 2.1 생성 스케일
+### 2.1 현재 스케일: 10k (2026-02-24)
+
+```
+Scale: 10k (--scale 10k)
+총 9,500개 데이터셋
+train=6,650, val=1,425, test=1,425
+```
+
+### 2.2 이전 스케일: small (참고)
 
 ```
 Scale: small (--small 옵션)
@@ -34,55 +42,57 @@ Scale: small (--small 옵션)
 | pre_damaged | 5 | goal2 | 1 |
 | thick_panel | 5 | variant | 0 |
 
-### 2.2 Split 분포 (manifest)
+### 2.3 Split 분포 (manifest, 10k)
 
 | split | 개수 |
 |-------|------|
-| train | 86 |
-| val | 16 |
-| test | 23 |
+| train | 6,650 |
+| val | 1,425 |
+| test | 1,425 |
 
-### 2.3 Goal 1 ML용 실제 사용 데이터
+### 2.4 Goal 1 ML용 (10k, max-train 2000 적용)
 
-| 구분 | Normal (label=0) | Crack (label=1, goal1) | 합계 |
-|------|------------------|-------------------------|------|
-| **Train** | 75 | 8 | **83** |
-| **Val** | 15 | 1 | **16** |
-| **Test** | 18 | 3 | **21** |
+- Train: max 2000 normal + crack 제한
+- Test: 전체 1,425 데이터셋 → 78,690 행
+- Hard subset: light_distortion 75, micro_crack 45
 
-- **Hard subset (test)**:
-  - light_distortion: **1개**
-  - micro_crack: **1개**
+### 2.5 10k 분석 결과 (실제)
 
-### 2.4 특징 행 수 (행 단위)
+| 모델 | Precision | Recall | FP | ROC AUC |
+|------|-----------|--------|-----|---------|
+| DREAM | **99.67%** | 72.6% | 24 | 0.965 |
+| PatchCore | **99.66%** | 69.7% | 24 | 0.961 |
+| **Ensemble** | **99.86%** | 69.7% | **10** | — |
+
+- **Precision 99%+ 달성**
+- Hard subset: light_distortion 69/75 (92%), micro_crack 45/45 (100%)
+
+### 2.6 특징 행 수 (행 단위, 10k)
 
 - `include_per_frame=True`, `include_global_stats=True`, `include_per_point=False` → **데이터셋당 61행**
-- **Train 행**: 83 × 61 = **5,063**
-- **Test 행**: 21 × 61 = **1,281**
+- **Test 행**: 78,690 (68,625 normal + 10,065 crack)
 
 ---
 
 ## 3. 보고서별 정합성 분석
 
-### 3.1 `reports/crack_detection_analysis/analysis.json`
+### 3.1 `reports/crack_detection_analysis/analysis.json` (10k, 2026-02-24)
 
 | 항목 | 값 | 해석 |
 |------|-----|------|
-| n_test | 1,159 | 행 단위 (61행/데이터셋) → **약 19개 데이터셋** |
-| n_normal | 976 | 976/61 ≈ 16 normal 데이터셋 |
-| n_crack | 183 | 183/61 ≈ 3 crack 데이터셋 |
+| n_test | 78,690 | 행 단위 (68,625 normal + 10,065 crack) |
+| n_normal | 68,625 | ~1,125 normal 데이터셋 |
+| n_crack | 10,065 | ~165 crack 데이터셋 |
 
-**결론**: `analysis.json`은 **이전 실행** (소규모 ~19 test 데이터셋) 결과. 현재 workspace small 데이터(21 test)와 **scale 유사**하나, 동일 시드/구성은 아님.
-
-**실제 결과 (analysis.json 기준)**:
+**실제 결과 (10k analysis.json)**:
 
 | 모델 | Precision | Recall | FP | FN | TP | TN |
-|------|-----------|--------|-----|-----|-----|-----|
-| DREAM | 0.7188 | 0.3770 | 27 | 114 | 69 | 949 |
-| PatchCore | 0.7000 | 0.3825 | 30 | 113 | 70 | 946 |
-| Ensemble | 0.7727 | 0.3716 | 20 | 115 | 68 | 956 |
+|------|-----------|--------|-----|-----|-----|------|
+| DREAM | **99.67%** | 72.6% | 24 | 2,754 | 7,311 | 68,601 |
+| PatchCore | **99.66%** | 69.7% | 24 | 3,049 | 7,016 | 68,601 |
+| **Ensemble** | **99.86%** | 69.7% | **10** | 3,049 | 7,016 | 68,615 |
 
-- Hard subset: light_distortion n=1, micro_crack n=1 (둘 다 0% 정상 분류, 100% 크랙 분류)
+- Hard subset: light_distortion 69/75 (92%), micro_crack 45/45 (100%)
 
 ### 3.2 `reports/CRACK_DETECTION_FINAL_REPORT.md`
 
