@@ -50,18 +50,20 @@ FPCB 굽힘 공정에서 구리 배선 크랙은 제품 불량의 주요 원인�
 
 - Class-wise 70/15/15, seed=20260219
 
-### 2.2 10k Dataset Configuration
+### 2.2 Dataset Configuration (30k + edge_scorch + diversity)
 
 | Scenario | Count | Label | Goal |
 |----------|-------|-------|------|
-| normal | 7,000 | 0 | — |
-| light_distortion | 500 | 0 | FP mitigation |
-| crack | 500 | 1 | Goal 1 |
-| uv_overcured | 300 | 1 | Goal 1 |
-| micro_crack | 300 | 1 | Goal 1 |
-| pre_damaged | 500 | 1 | Goal 2 |
-| thick_panel | 400 | 0 | Boundary case |
-| **Total** | **9,500** | — | — |
+| normal | 21,500+ | 0 | — |
+| light_distortion | 1,500+ | 0 | FP mitigation |
+| crack | 2,400+ | 1 | Goal 1 |
+| micro_crack | 900 | 1 | Goal 1 |
+| **edge_scorch** | **600** | **1** | **Goal 1** (레이저 테두리 그을림 → 최외곽 벌어짐) |
+| pre_damaged | 1,500 | 1 | Goal 2 |
+| thick_panel | 1,200 | 0 | Boundary case |
+| **Total** | **~29,900** | — | — |
+
+**edge_scorch**: Laser cutting edge scorch → weakened bonding → outermost part gaps during bend (현장 보고 반영)
 
 **Split counts**: train=6,650, val=1,425, test=1,425
 

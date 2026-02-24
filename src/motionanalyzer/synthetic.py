@@ -12,6 +12,7 @@ ScenarioName = Literal[
     "normal", "crack", "pre_damage", "thick_panel", "uv_overcured",
     "light_distortion",  # Normal + illumination-induced edge distortion
     "micro_crack",      # Subtle crack, harder to detect
+    "edge_scorch",      # Laser cutting edge scorch → weakened bonding → edge gape during bend
 ]
 
 NoiseMode = Literal["gaussian", "outlier", "temporal_drift", "scale_jitter", "mixed"]
@@ -59,6 +60,11 @@ class ScenarioParams:
     """Vibration damping coefficient."""
     vibration_duration_frames: int = 0
     """Vibration duration after crack (frames)."""
+    # Laser edge scorch: weakened bonding at panel edges → gape during bend
+    edge_gape_gain: float = 0.0
+    """Curvature concentration at edges (laser scorch → edge separation)."""
+    edge_gape_width_ratio: float = 0.08
+    """Width of edge-affected zone (0-1); typical 0.05-0.12."""
 
 
 def _scenario_params(name: ScenarioName) -> ScenarioParams:
@@ -181,6 +187,27 @@ def _scenario_params(name: ScenarioName) -> ScenarioParams:
             vibration_frequency_hz=12.0,  # Lower
             vibration_damping=0.95,
             vibration_duration_frames=8,
+            edge_gape_gain=0.0,
+            edge_gape_width_ratio=0.08,
+        ),
+        # Edge scorch: laser cutting scorches FPCB edges → weakened bonding → outermost part gaps during bend
+        "edge_scorch": ScenarioParams(
+            final_angle_ratio=0.92,
+            response_alpha=0.14,
+            damping=0.96,
+            crack_gain=0.0,
+            crack_center_ratio=0.65,
+            crack_width_ratio=0.05,
+            uv_delay_ratio=0.0,
+            uv_snap_gain=0.0,
+            pre_damage_skew=0.04,  # Slight asymmetry from uneven scorch
+            shockwave_amplitude=0.0,
+            shockwave_decay_rate=0.0,
+            vibration_frequency_hz=0.0,
+            vibration_damping=0.0,
+            vibration_duration_frames=0,
+            edge_gape_gain=18.0,  # Curvature concentration at both edges (laser scorch)
+            edge_gape_width_ratio=0.07,  # ~7% of panel length at each edge
         ),
     }
     return table[name]
@@ -225,6 +252,12 @@ def _curvature_weight(points: int, params: ScenarioParams) -> np.ndarray:
     crack_peak = np.exp(-0.5 * ((s - center) / width) ** 2)
     skew = 1.0 + params.pre_damage_skew * (2.0 * s - 1.0)
     weights = np.maximum(0.2, skew + params.crack_gain * crack_peak)
+    # Edge scorch: laser-cut edges have weakened bonding → curvature concentration at both edges
+    edge_width = getattr(params, "edge_gape_width_ratio", 0.08) or 0.08
+    edge_gain = getattr(params, "edge_gape_gain", 0.0) or 0.0
+    if edge_gain > 0.0:
+        edge_peak = np.exp(-0.5 * (s / edge_width) ** 2) + np.exp(-0.5 * ((1.0 - s) / edge_width) ** 2)
+        weights = weights + edge_gain * edge_peak
     normalized = weights / np.mean(weights)
     return np.asarray(normalized, dtype=float)
 
@@ -667,6 +700,14 @@ def validate_synthetic_bundle(output_dir: Path, scenario: ScenarioName) -> tuple
         checks.extend(
             [
                 (4.0 < conc[-1] < 8.0, f"micro_crack concentration out of range: {conc[-1]:.2f}"),
+            ]
+        )
+    elif scenario == "edge_scorch":
+        # Edge scorch: curvature concentration at edges (laser scorch → edge gape)
+        checks.extend(
+            [
+                (conc[-1] > 4.0, f"edge_scorch signature weak: concentration={conc[-1]:.2f}"),
+                (bend[-1] >= 140.0, f"edge_scorch final bend too small: {bend[-1]:.1f} deg"),
             ]
         )
 

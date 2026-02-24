@@ -1,6 +1,6 @@
 # Cursor 작업 로그 (Chatslog)
 
-**목표**: 10k 데이터셋 규모에서 Precision 99%+ 달성, 연구 결과 논문 정리
+**목표**: 30k+ 데이터셋, Precision 99%+, 현실 변수(edge_scorch 등) 반영
 
 ---
 
@@ -11,6 +11,8 @@
 | 2026-02-24 | 로그 생성 | .cursor/chatslog.md 생성 | 자율 작업 시작 |
 | 2026-02-24 | 10k 데이터셋 생성 | train=6650, val=1425, test=1425 | --scale 10k --workers 4, ~160초 |
 | 2026-02-24 | 10k 분석 완료 | Ensemble Precision 99.86%, FP 10 | --max-train 2000, matplotlib 설치 |
+| 2026-02-25 | 30k supplement | train=19950, val=4275, test=4275 | supplement_ml_dataset.py |
+| 2026-02-25 | edge_scorch 추가 | 600개 + diversity 800 | 레이저 테두리 그을림→최외곽 벌어짐 |
 
 ---
 

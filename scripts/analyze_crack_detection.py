@@ -109,6 +109,7 @@ def _run_evaluation_and_get_predictions(max_train: int | None = None) -> tuple[d
     crack_test = [BASE / e["path"] for e in entries if e["goal"] == "goal1" and e["split"] == "test"]
 
     # Hard subset: light_distortion (normal) + micro_crack (crack) for per-scenario evaluation
+    # edge_scorch included in crack_train/crack_test via goal1
     hard_normal_paths = {str((BASE / e["path"]).resolve()) for e in entries if e.get("scenario") == "light_distortion" and e["split"] == "test"}
     hard_crack_paths = {str((BASE / e["path"]).resolve()) for e in entries if e.get("scenario") == "micro_crack" and e["split"] == "test"}
     hard_normal_list = [BASE / e["path"] for e in entries if e.get("scenario") == "light_distortion" and e["split"] == "test"]

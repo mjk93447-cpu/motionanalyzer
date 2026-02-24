@@ -30,3 +30,12 @@ def test_validate_synthetic_bundle_with_matching_scenario(tmp_path: Path) -> Non
     generate_synthetic_bundle(output_dir=out, config=config)
     ok, errors = validate_synthetic_bundle(output_dir=out, scenario="crack")
     assert ok, f"Expected crack validation to pass, got: {errors}"
+
+
+def test_edge_scorch_scenario_generates_and_validates(tmp_path: Path) -> None:
+    """Edge scorch: laser cutting edge scorch → weakened bonding → edge gape during bend."""
+    out = tmp_path / "synthetic_edge_scorch"
+    config = SyntheticConfig(frames=60, points_per_frame=180, fps=30.0, seed=42, scenario="edge_scorch")
+    generate_synthetic_bundle(output_dir=out, config=config)
+    ok, errors = validate_synthetic_bundle(output_dir=out, scenario="edge_scorch")
+    assert ok, f"Expected edge_scorch validation to pass, got: {errors}"
