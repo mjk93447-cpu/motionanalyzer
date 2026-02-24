@@ -9,10 +9,10 @@
 
 | 구분 | 상태 | 비고 |
 |------|------|------|
-| **실제 데이터셋** | ✅ 존재 (`data/synthetic/ml_dataset`) | **10k 스케일** (train=6650, val=1425, test=1425) |
-| **analysis.json** | ✅ 10k 실행 결과 | n_test=78,690, Ensemble Precision **99.86%**, FP 10 |
-| **CRACK_DETECTION_FINAL_REPORT** | ⚠️ 다른 실행 기준 | Precision 100%, FP 0 — 10k 결과(99.86%, FP 10)와 상이 |
-| **PAPER_FPCB_CRACK_DETECTION** | ✅ 10k 기반 | 논문 초안, 실제 결과 반영 |
+| **실제 데이터셋** | ✅ 존재 (`data/synthetic/ml_dataset`) | **30k manifest** (29,900, train=20,370, val=4,365, test=5,165) |
+| **analysis.json** | ✅ 실행 결과 | n_test=78,690, Ensemble Precision **99.86%**, FP 10 |
+| **CRACK_DETECTION_FINAL_REPORT** | ⚠️ 다른 실행 기준 | Precision 100%, FP 0 — analysis.json(99.86%, FP 10)와 상이 |
+| **PAPER_FPCB_CRACK_DETECTION** | ✅ analysis.json 기반 | 논문, 실제 결과 반영, 10회 iterative refinement |
 
 ---
 

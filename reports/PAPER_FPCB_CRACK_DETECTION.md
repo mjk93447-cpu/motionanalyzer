@@ -1,13 +1,13 @@
 # AI-Based Crack Detection in FPCB Bending Process: Achieving 99%+ Precision on Synthetic Data
 
-*Draft manuscript — Iteration 5 (final)*  
+*Draft manuscript — Iteration 10 (final)*  
 *Last revised: February 2026*
 
 ---
 
 ## Abstract
 
-Copper wire cracking during FPCB bending is a major cause of product defects. We present an anomaly detection system that combines DREAM and PatchCore in an ensemble, trained on synthetic data with a precision-first objective. By including boundary cases (light_distortion, thick_panel), applying a precision-priority threshold (≥99.7%) on a held-out validation set, and requiring both models to agree for a crack prediction, we achieved **99.86% precision with 10 false positives** on a 10k-scale test set. The dataset was extended to ~30k samples and an edge_scorch scenario was added to model laser-cutting-induced edge separation reported in production. Our results compare favorably with prior FPC defect detection work (91.1% accuracy) and industrial anomaly benchmarks (99.6% AUROC).
+Copper wire cracking during FPCB bending is a major cause of product defects. We present an anomaly detection system that combines DREAM and PatchCore in an ensemble, trained on synthetic data with a precision-first objective. By including boundary cases (light_distortion, thick_panel), applying a precision-priority threshold (≥99.7%) on a held-out validation set, and requiring both models to agree for a crack prediction, we achieved **99.86% precision with 10 false positives** on a held-out test set (78,690 rows). The dataset was extended to ~30k samples and an edge_scorch scenario was added to model laser-cutting-induced edge separation reported in production. All reported results are based on actual analysis output; train/val/test separation was verified with zero overlap.
 
 **Keywords:** FPCB, crack detection, anomaly detection, DREAM, PatchCore, precision, synthetic data, edge scorch
 
@@ -56,6 +56,8 @@ Figure 1 illustrates the end-to-end pipeline: synthetic data generation, feature
 
 Data were split by 70% train, 15% validation, and 15% test, with the same ratios applied within each scenario. The random seed was fixed (20260219) for reproducibility. The validation set was used only for threshold selection; the test set was used solely for final evaluation and was never used for training or tuning.
 
+**Data flow:** Original 10k generation → supplement to ~28k → edge_scorch supplement → final manifest (29,900). Train/val/test overlap was verified as zero.
+
 Figure 5 shows the scenario distribution in the extended 30k dataset.
 
 ![Fig. 5. Scenario distribution](paper_figures/fig5_scenario_distribution.png)
@@ -68,7 +70,7 @@ Figure 5 shows the scenario distribution in the extended 30k dataset.
 |-----------------|---------------|-------|-------------------------------|
 | normal          | 21,500+       | 0     | Baseline                      |
 | light_distortion| 1,600         | 0     | FP mitigation (illumination)  |
-| crack, uv_overcured | 2,600    | 1     | Goal 1 (bending-in-process)   |
+| crack_in_bending    | 2,600    | 1     | Goal 1 (bending-in-process)   |
 | micro_crack     | 900           | 1     | Goal 1 (subtle crack)         |
 | edge_scorch     | 600           | 1     | Goal 1 (laser edge scorch)    |
 | pre_damaged     | 1,500         | 1     | Goal 2                        |
@@ -96,9 +98,9 @@ Thresholds were chosen on the validation set to satisfy MIN_PRECISION ≥ 0.997 
 
 ## 3. Results
 
-### 3.1 Main Results (10k-Scale Evaluation)
+### 3.1 Main Results
 
-The reported results were obtained with a 10k-scale dataset (train capped at 2,000 normal and 500 crack for computational efficiency; full test set used). Test set size: 78,690 rows (68,625 normal, 10,065 crack).
+The reported results were obtained with the manifest dataset (29,900 samples total). For computational efficiency, training was capped at 2,000 normal and 500 crack samples; the **full test set** was used for evaluation (no subsampling). Test set size: 78,690 rows (68,625 normal, 10,065 crack), corresponding to 1,290 test datasets (61 rows per dataset: 60 frames + 1 global). Train/val/test separation was verified with zero overlap.
 
 Figure 2 shows the confusion matrices for DREAM, PatchCore, and the ensemble.
 
@@ -122,7 +124,7 @@ Figure 3 compares precision and recall across models.
 
 ### 3.2 Comparison with Related Work
 
-We compared our approach with representative prior work on FPC defect detection and industrial anomaly detection (Table 1). Direct numerical comparison is limited because prior studies report different metrics (accuracy, AUROC) on different domains (surface defects, MVTec objects). Nevertheless, our precision-oriented design achieves 99.86% precision, which is comparable to or exceeds the best-reported performance in each category when considering the stricter precision criterion we adopt.
+We compared our approach with representative prior work on FPC defect detection and industrial anomaly detection (Table 1). Direct numerical comparison is limited because prior studies report different metrics (accuracy, AUROC) on different domains (surface defects, MVTec objects). Our precision-oriented design achieves 99.86% precision on the FPCB bending task. Because metrics and domains differ, we do not claim superiority over prior work; we report that our target (precision ≥99%) was met on the held-out test set.
 
 **Table 1. Comparison with related work**
 
@@ -131,9 +133,9 @@ We compared our approach with representative prior work on FPC defect detection 
 | Zang & Zhang [3] | FPC defect | CNN | Accuracy | ~85–90% | FPC images |
 | PLOS ONE [1] | FPC surface | GA-Faster-RCNN | Accuracy | 91.1% | FPC surface |
 | Roth et al. [2] | Industrial | PatchCore | AUROC | 99.6% | MVTec AD |
-| **Ours** | **FPCB bending** | **DREAM+PatchCore ensemble** | **Precision** | **99.86%** | Synthetic 10k |
+| **Ours** | **FPCB bending** | **DREAM+PatchCore ensemble** | **Precision** | **99.86%** | Synthetic (29.9k manifest) |
 
-*Note: Metrics are not directly comparable; our focus on precision targets production scenarios where false alarms are costly.*
+*Note: Metrics differ across works (accuracy, AUROC, precision); direct numerical comparison is not intended. Our precision-oriented design targets production scenarios where false alarms are costly.*
 
 Figure 4 provides a visual comparison. The dashed line indicates our 99% target.
 
@@ -186,11 +188,11 @@ Table 2 summarizes strengths and limitations of this work.
 | Physics | Edge scorch, shockwave, vibration modeled | 2D surrogate; 3D stress/strain differ |
 | Evaluation | Train/val/test separation, no leakage | Synthetic-only; real-data validation needed |
 
-Validation on real FPCB imagery is recommended before deployment.
+Validation on real FPCB imagery is recommended before deployment. A comprehensive evaluation of data reliability, dataset relationships, analysis flow, and research method appropriateness is documented in PAPER_COMPREHENSIVE_EVALUATION.md.
 
 ### 4.3 Conclusions
 
-We achieved 99.86% precision with 10 false positives on a 10k-scale synthetic test set using a DREAM–PatchCore ensemble. Compared with prior FPC defect detection work (91.1% accuracy [1]) and industrial anomaly benchmarks (99.6% AUROC [2]), our precision-oriented design reaches a comparable or higher level on the metric most relevant to production. The dataset was extended to ~30k samples and an edge_scorch scenario was added to model laser-cutting-induced edge separation. Next steps include validation on real FPCB imagery and, if needed, recall improvement through additional features or model variants.
+We achieved 99.86% precision with 10 false positives on a held-out synthetic test set using a DREAM–PatchCore ensemble. The dataset was extended to ~30k samples and an edge_scorch scenario was added to model laser-cutting-induced edge separation. All reported numbers are based on the actual analysis.json output; no aspirational or target values are reported as results. Next steps include validation on real FPCB imagery and, if needed, recall improvement through additional features or model variants.
 
 ---
 
@@ -219,6 +221,7 @@ We achieved 99.86% precision with 10 false positives on a 10k-scale synthetic te
 ## Appendix B: Reproducibility
 
 - **Data:** `python scripts/generate_ml_dataset.py --scale 10k`; `python scripts/supplement_ml_dataset.py`; `python scripts/supplement_edge_scorch.py`
-- **Analysis:** `python scripts/analyze_crack_detection.py --max-train 2000`
+- **Analysis:** `python scripts/analyze_crack_detection.py --max-train 2000` (or `--max-train 5000` for more training)
+- **Validation:** `python scripts/validate_research_methodology.py`
 - **Figures:** `python scripts/generate_paper_figures.py`
 - **Seed:** 20260219 (data), 20260224 (supplement)
