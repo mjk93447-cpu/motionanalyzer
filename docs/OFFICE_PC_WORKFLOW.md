@@ -20,7 +20,7 @@
 2. **Synthetic & Goals** 탭 이동
 3. **Generate ML Dataset**: Small set 체크 후 생성 (또는 전체 1120건)
 4. **Run Goal 1 (CPD)**, **Run Goal 1 (ML)**, **Run Goal 2 (ML)** 순서로 실행
-5. **Summary** 클릭 → `goal_achievement_summary.md` 내용 확인
+5. **Summary** 클릭 → `reports/crack_detection_analysis/insights.md` 내용 확인
 
 ---
 
@@ -30,7 +30,7 @@ exe 실행 디렉터리 기준 `reports/` 폴더 (또는 exe와 동일 경로):
 
 | 파일 | 용도 |
 |------|------|
-| `goal_achievement_summary.md` | 종합 요약 |
+| `crack_detection_analysis/insights.md` | 종합 인사이트 |
 | `goal1_cpd_evaluation.json` | CPD 정확도 |
 | `goal1_ml_evaluation.json` | DREAM·PatchCore PR |
 | `goal2_ml_evaluation.json` | 목표 2 ML |
@@ -40,7 +40,7 @@ exe 실행 디렉터리 기준 `reports/` 폴더 (또는 exe와 동일 경로):
 ## 4. 이메일 전송
 
 1. `reports/` 폴더를 ZIP으로 압축
-2. 또는 `goal_achievement_summary.md` 내용을 이메일 본문에 붙여넣기
+2. 또는 `crack_detection_analysis/insights.md` 내용을 이메일 본문에 붙여넣기
 3. Cursor Composer 검토 담당자에게 전송
 
 ---

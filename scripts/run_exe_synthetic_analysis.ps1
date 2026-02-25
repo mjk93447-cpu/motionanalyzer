@@ -28,18 +28,18 @@ if (-not (Test-Path $exePath)) {
 Write-Host "==> Using EXE: $exePath"
 Write-Host ""
 
-# 1. Analyze normal synthetic data
+# 1. Analyze normal synthetic data (DS-260223-ml-fp-20k-60f)
 Write-Host "[1/4] Analyzing normal synthetic data..."
 & $exePath analyze-bundle `
-    --input-dir "data\synthetic\examples\normal" `
+    --input-dir "data\synthetic\ml_dataset_fp_focused\normal\normal_0001" `
     --output-dir "exports\vectors\exe_normal"
 Write-Host "[OK] Normal analysis complete"
 Write-Host ""
 
-# 2. Analyze crack synthetic data
+# 2. Analyze crack synthetic data (DS-260223-ml-fp-20k-60f)
 Write-Host "[2/4] Analyzing crack synthetic data..."
 & $exePath analyze-bundle `
-    --input-dir "data\synthetic\examples\crack" `
+    --input-dir "data\synthetic\ml_dataset_fp_focused\crack_in_bending\crack_0001" `
     --output-dir "exports\vectors\exe_crack"
 Write-Host "[OK] Crack analysis complete"
 Write-Host ""
@@ -61,8 +61,8 @@ Write-Host ""
 # 4. Run full FPCB pipeline (generate high-fidelity data, analyze, plot)
 Write-Host "[4/4] Running FPCB pipeline (generate -> analyze -> plot)..."
 & $exePath run-fpcb-pipeline `
-    --data-dir "data\synthetic\fpcb_high_fidelity" `
-    --export-vectors-dir "exports\vectors\fpcb_high_fidelity" `
+    --data-dir "data\synthetic\fpcb_generated" `
+    --export-vectors-dir "exports\vectors\fpcb_generated" `
     --plots-dir "exports\plots"
 Write-Host "[OK] FPCB pipeline complete"
 Write-Host ""
@@ -72,6 +72,6 @@ Write-Host ""
 Write-Host "Generated files:"
 Write-Host "  - exports\vectors\exe_normal\vectors.csv, summary.json, vector_map.png"
 Write-Host "  - exports\vectors\exe_crack\vectors.csv, summary.json, vector_map.png"
-Write-Host "  - exports\vectors\fpcb_high_fidelity\vector_map.png"
+Write-Host "  - exports\vectors\fpcb_generated\vector_map.png"
 Write-Host "  - exports\plots\fpcb_metrics.png"
 Write-Host ""

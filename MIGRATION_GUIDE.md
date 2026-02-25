@@ -23,14 +23,11 @@ This guide maps legacy paths to the new AI-first layout.
 | `docs/JUPYTER_GPU_SETUP.md` | `docs/archive/2026-02/JUPYTER_GPU_SETUP.md` |
 | `docs/ML_GPU_ACCELERATION_STRATEGY.md` | `docs/archive/2026-02/ML_GPU_ACCELERATION_STRATEGY.md` |
 
-## Report Moves
+## Report Moves (2026-02-25: 레거시 제거, insights.md로 통합)
 
-| Previous Path | New Path |
+| Previous Path | Status |
 |---|---|
-| `reports/deliverables/CRACK_DETECTION_FINAL_REPORT.md` | `reports/archive/2026-02/CRACK_DETECTION_FINAL_REPORT.deliverables.md` |
-| `reports/DETECTION_IMPROVEMENT_STRATEGY.md` | `reports/archive/2026-02/DETECTION_IMPROVEMENT_STRATEGY.md` |
-| `reports/PRECISION_99_DEVELOPMENT_STRATEGY.md` | `reports/archive/2026-02/PRECISION_99_DEVELOPMENT_STRATEGY.md` |
-| `reports/precision_progress_log.md` | `reports/archive/2026-02/precision_progress_log.md` |
+| `reports/archive/`, `reports/CRACK_DETECTION_FINAL_REPORT.md` 등 | 제거됨. 핵심 지식은 `reports/crack_detection_analysis/insights.md`에 통합 |
 
 ## Script Moves
 

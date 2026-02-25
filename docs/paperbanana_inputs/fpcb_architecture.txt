@@ -1,0 +1,4 @@
+Two-branch anomaly detection architecture:
+Left branch: DREAM model with autoencoder reconstruction and discriminative head
+Right branch: PatchCore with normal feature memory bank and distance-based scoring
+Both branches feed into AND gate for final crack prediction

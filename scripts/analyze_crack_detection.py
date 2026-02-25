@@ -21,7 +21,7 @@ src = repo_root / "src"
 if src.exists() and str(src) not in sys.path:
     sys.path.insert(0, str(src))
 
-BASE = repo_root / "data" / "synthetic" / "ml_dataset"
+DEFAULT_BASE = repo_root / "data" / "synthetic" / "ml_dataset"
 REPORTS = repo_root / "reports"
 OUT_DIR = REPORTS / "crack_detection_analysis"
 
@@ -35,24 +35,33 @@ def _select_threshold_precision_priority(
     y_test: np.ndarray,
     min_precision: float = MIN_PRECISION,
     min_recall: float = MIN_RECALL,
+    zero_fp_priority: bool = False,
 ) -> tuple[float, float, float]:
     """
     Select threshold: Precision >= min_precision, Recall >= min_recall.
     Among valid thresholds, pick the one with highest Recall.
-    Uses sklearn precision_recall_curve (thresholds at actual score values).
-    Returns: (best_threshold, precision, recall). Falls back to F1-max if no valid.
+    If zero_fp_priority: prefer threshold with FP=0 on y_test, then max Recall.
+    Returns: (best_threshold, precision, recall).
     """
     from sklearn.metrics import precision_recall_curve
 
     prec, rec, thresh = precision_recall_curve(y_test, scores)
-    # thresh[i] corresponds to prec[i], rec[i]; thresh is descending (high th first)
     best_thresh = 0.5
     best_prec = 0.0
     best_rec = 0.0
     best_rec_valid = -1.0
 
+    def _fp_at_idx(i: int) -> int:
+        """FP count when using thresh[i] as threshold (predict 1 if score >= thresh)."""
+        t = float(thresh[i]) if i < len(thresh) else 0.0
+        pred = (scores >= t).astype(int)
+        return int(((y_test == 0) & (pred == 1)).sum())
+
     for i in range(len(thresh)):
         p, r = float(prec[i]), float(rec[i])
+        fp = _fp_at_idx(i)
+        if zero_fp_priority and fp > 0:
+            continue
         if p >= min_precision and r >= min_recall:
             if r > best_rec_valid:
                 best_rec_valid = r
@@ -60,8 +69,11 @@ def _select_threshold_precision_priority(
                 best_prec = p
                 best_rec = r
 
+    if best_rec_valid < 0 and zero_fp_priority:
+        # No threshold with FP=0; try without zero_fp constraint
+        pass
     if best_rec_valid < 0:
-        # No threshold satisfies prec>=0.99; max precision (Recall unconstrained)
+        # No threshold satisfies; max precision (Recall unconstrained)
         for i in range(len(thresh)):
             p, r = float(prec[i]), float(rec[i])
             if r >= min_recall and p > best_prec:
@@ -79,12 +91,87 @@ def _select_threshold_precision_priority(
     return best_thresh, best_prec, best_rec
 
 
-def _run_evaluation_and_get_predictions(max_train: int | None = None) -> tuple[dict, dict, np.ndarray, np.ndarray, dict]:
+def _select_threshold_normal_percentile(
+    scores: np.ndarray,
+    y: np.ndarray,
+    percentile: float = 99.9,
+) -> tuple[float, float, float]:
+    """
+    Use percentile of normal scores as threshold. E.g. 99.9%ile => ~0.1% of normals above.
+    Returns: (threshold, precision, recall).
+    """
+    normal_mask = y == 0
+    crack_mask = y == 1
+    n_crack = int(crack_mask.sum())
+    if n_crack == 0:
+        return float(np.max(scores) + 0.1), 0.0, 0.0
+    normal_scores = scores[normal_mask]
+    thresh = float(np.percentile(normal_scores, percentile))
+    pred = (scores >= thresh).astype(int)
+    fp = int(((normal_mask) & (pred == 1)).sum())
+    tp = int(((crack_mask) & (pred == 1)).sum())
+    prec = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    rec = tp / n_crack if n_crack > 0 else 0.0
+    return thresh, prec, rec
+
+
+def _select_threshold_normal_fp_capped(
+    scores: np.ndarray,
+    y: np.ndarray,
+    max_fp: int = 0,
+) -> tuple[float, float, float]:
+    """
+    Select threshold such that FP <= max_fp on (y==0) samples, maximize Recall on crack.
+    Used for Normal FP Rate < 0.1% target (e.g. max_fp=0 or 1).
+    Returns: (best_threshold, precision, recall).
+    """
+    normal_mask = y == 0
+    crack_mask = y == 1
+    n_crack = int(crack_mask.sum())
+    if n_crack == 0:
+        return float(np.max(scores) + 0.1), 0.0, 0.0
+
+    # Iterate over unique score values (descending) as candidate thresholds
+    uniq = np.unique(scores)
+    uniq = np.sort(uniq)[::-1]
+    best_thresh = float(uniq[0]) + 0.01 if len(uniq) > 0 else 0.5
+    best_rec = 0.0
+    best_prec = 0.0
+
+    for t in uniq:
+        pred = (scores >= t).astype(int)
+        fp = int(((normal_mask) & (pred == 1)).sum())
+        if fp > max_fp:
+            continue
+        tp = int(((crack_mask) & (pred == 1)).sum())
+        prec = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+        rec = tp / n_crack if n_crack > 0 else 0.0
+        if rec > best_rec:
+            best_rec = rec
+            best_prec = prec
+            best_thresh = float(t)
+
+    return best_thresh, best_prec, best_rec
+
+
+def _run_evaluation_and_get_predictions(
+    max_train: int | None = None,
+    base_dir: Path | None = None,
+    *,
+    test_base_dir: Path | None = None,
+    dataset_level_eval: bool = False,
+    min_precision: float = MIN_PRECISION,
+    zero_fp_priority: bool = False,
+    normal_fp_max: int | None = None,
+    threshold_margin: float = 0.0,
+    threshold_percentile: float | None = None,
+) -> tuple[dict, dict, np.ndarray, np.ndarray, dict]:
     """Run Goal 1 ML evaluation and return predictions for each model.
     Returns: results, preds, y_test, X_test, hard_subset_indices (for per-scenario breakdown).
     max_train: If set, limit train samples per class for faster runs (e.g. 2000).
     """
-    manifest_path = BASE / "manifest.json"
+    base = base_dir or DEFAULT_BASE
+    manifest_path = base / "manifest.json"
     if not manifest_path.exists():
         raise FileNotFoundError("Run: python scripts/generate_ml_dataset.py")
 
@@ -92,27 +179,36 @@ def _run_evaluation_and_get_predictions(max_train: int | None = None) -> tuple[d
     entries = manifest["entries"]
 
     # Train: normal + light_distortion + thick_panel (no limit; use full train set)
-    normal_train_pure = [BASE / e["path"] for e in entries if e["goal"] == "normal" and e.get("scenario") != "light_distortion" and e["split"] == "train"]
-    normal_train_ld = [BASE / e["path"] for e in entries if e.get("scenario") == "light_distortion" and e["split"] == "train"]
-    normal_train_thick = [BASE / e["path"] for e in entries if e["goal"] == "variant" and e["split"] == "train"]  # thick_panel, label=0
+    normal_train_pure = [base / e["path"] for e in entries if e["goal"] == "normal" and e.get("scenario") != "light_distortion" and e["split"] == "train"]
+    normal_train_ld = [base / e["path"] for e in entries if e.get("scenario") == "light_distortion" and e["split"] == "train"]
+    normal_train_thick = [base / e["path"] for e in entries if e["goal"] == "variant" and e["split"] == "train"]  # thick_panel, label=0
     normal_train = normal_train_ld + normal_train_thick + normal_train_pure
-    normal_val = [BASE / e["path"] for e in entries if e["goal"] == "normal" and e["split"] == "val"]
-    normal_test = [BASE / e["path"] for e in entries if e["goal"] == "normal" and e["split"] == "test"]
-    crack_train = [BASE / e["path"] for e in entries if e["goal"] == "goal1" and e["split"] == "train"]
+    normal_val = [base / e["path"] for e in entries if e["goal"] == "normal" and e["split"] == "val"]
+    crack_train = [base / e["path"] for e in entries if e["goal"] == "goal1" and e["split"] == "train"]
+
+    # Test: from test_base_dir if set (e.g. 100k), else base_dir
+    test_base = Path(test_base_dir) if test_base_dir else base
+    test_entries = entries
+    if test_base_dir:
+        test_mf = test_base / "manifest.json"
+        if not test_mf.exists():
+            raise FileNotFoundError(f"test_base_dir manifest not found: {test_mf}")
+        test_entries = json.loads(test_mf.read_text(encoding="utf-8"))["entries"]
+
+    normal_test = [test_base / e["path"] for e in test_entries if e["goal"] == "normal" and e["split"] == "test"]
+    crack_test = [test_base / e["path"] for e in test_entries if e["goal"] == "goal1" and e["split"] == "test"]
 
     if max_train is not None and max_train > 0:
         n_norm = min(max_train, len(normal_train))
         n_crack = min(max(max_train // 4, 100), len(crack_train))
         normal_train = normal_train[:n_norm]
         crack_train = crack_train[:n_crack]
-    crack_val = [BASE / e["path"] for e in entries if e["goal"] == "goal1" and e["split"] == "val"]
-    crack_test = [BASE / e["path"] for e in entries if e["goal"] == "goal1" and e["split"] == "test"]
+    crack_val = [base / e["path"] for e in entries if e["goal"] == "goal1" and e["split"] == "val"]
 
-    # Hard subset: light_distortion (normal) + micro_crack (crack) for per-scenario evaluation
-    hard_normal_paths = {str((BASE / e["path"]).resolve()) for e in entries if e.get("scenario") == "light_distortion" and e["split"] == "test"}
-    hard_crack_paths = {str((BASE / e["path"]).resolve()) for e in entries if e.get("scenario") == "micro_crack" and e["split"] == "test"}
-    hard_normal_list = [BASE / e["path"] for e in entries if e.get("scenario") == "light_distortion" and e["split"] == "test"]
-    hard_crack_list = [BASE / e["path"] for e in entries if e.get("scenario") == "micro_crack" and e["split"] == "test"]
+    hard_normal_paths = {str((test_base / e["path"]).resolve()) for e in test_entries if e.get("scenario") == "light_distortion" and e["split"] == "test"}
+    hard_crack_paths = {str((test_base / e["path"]).resolve()) for e in test_entries if e.get("scenario") == "micro_crack" and e["split"] == "test"}
+    hard_normal_list = [test_base / e["path"] for e in test_entries if e.get("scenario") == "light_distortion" and e["split"] == "test"]
+    hard_crack_list = [test_base / e["path"] for e in test_entries if e.get("scenario") == "micro_crack" and e["split"] == "test"]
 
     from motionanalyzer.auto_optimize import (
         FeatureExtractionConfig,
@@ -176,6 +272,38 @@ def _run_evaluation_and_get_predictions(max_train: int | None = None) -> tuple[d
     # Use val for threshold; fallback to test if val too small (avoids data leakage in normal case)
     use_val_for_threshold = len(y_val) >= 20 and int((y_val == 1).sum()) >= 2
 
+    # Dataset-level aggregation: one prediction per video (reduces frame-level noise)
+    def _aggregate_by_dataset(
+        scores: np.ndarray,
+        y: np.ndarray,
+        paths: pd.Series,
+    ) -> tuple[np.ndarray, np.ndarray, list]:
+        df = pd.DataFrame({"path": paths.astype(str).values, "score": scores, "y": y})
+        agg = df.groupby("path", sort=False).agg({"score": "max", "y": "max"})
+        paths_agg = agg.index.tolist()
+        return (
+            agg["score"].values.astype(np.float32),
+            agg["y"].values.astype(int),
+            paths_agg,
+        )
+
+    use_ds_eval = (
+        dataset_level_eval
+        and "dataset_path" in norm_val.columns
+        and "dataset_path" in norm_test.columns
+    )
+
+    # Precompute eval-level y for return (dataset-level counts)
+    if use_ds_eval:
+        _, y_val_eval_pre, _ = _aggregate_by_dataset(
+            np.zeros(len(y_val), dtype=np.float32), y_val, norm_val["dataset_path"]
+        )
+        _, y_test_eval_ret, _ = _aggregate_by_dataset(
+            np.zeros(len(y_test), dtype=np.float32), y_test, norm_test["dataset_path"]
+        )
+    else:
+        y_test_eval_ret = y_test
+
     results: dict = {}
     pred_dream: np.ndarray | None = None
     pred_patchcore: np.ndarray | None = None
@@ -201,17 +329,54 @@ def _run_evaluation_and_get_predictions(max_train: int | None = None) -> tuple[d
         from motionanalyzer.ml_models.dream import DREAMPyTorch
         model = DREAMPyTorch(input_dim=len(feature_cols))
         model.load(res["model_path"])
-        scores_test = model.predict(X_test)
-        roc = roc_auc_score(y_test, scores_test)
-        if use_val_for_threshold:
-            scores_val = model.predict(X_val)
-            best_thresh, _, _ = _select_threshold_precision_priority(scores_val, y_val)
+        scores_test_raw = model.predict(X_test)
+        scores_val_raw = model.predict(X_val) if use_val_for_threshold else scores_test_raw
+        y_val_eval, y_test_eval = y_val, y_test
+        paths_test_agg: list = []
+        if use_ds_eval:
+            scores_val_raw, y_val_eval, _ = _aggregate_by_dataset(
+                scores_val_raw, y_val, norm_val["dataset_path"]
+            )
+            scores_test_raw, y_test_eval, paths_test_agg = _aggregate_by_dataset(
+                scores_test_raw, y_test, norm_test["dataset_path"]
+            )
+        scores_test = scores_test_raw
+        roc = roc_auc_score(y_test_eval, scores_test)
+        if threshold_percentile is not None:
+            best_thresh, _, _ = _select_threshold_normal_percentile(
+                scores_val_raw if use_val_for_threshold else scores_test,
+                y_val_eval if use_val_for_threshold else y_test_eval,
+                percentile=threshold_percentile,
+            )
+            thresh_src = f"normal_percentile={threshold_percentile} (val)" if use_val_for_threshold else f"normal_percentile={threshold_percentile} (test)"
+        elif normal_fp_max is not None:
+            best_thresh, _, _ = _select_threshold_normal_fp_capped(
+                scores_val_raw if use_val_for_threshold else scores_test,
+                y_val_eval if use_val_for_threshold else y_test_eval,
+                max_fp=normal_fp_max,
+            )
+            thresh_src = f"normal_fp_max={normal_fp_max} (val)" if use_val_for_threshold else f"normal_fp_max={normal_fp_max} (test)"
+        elif use_val_for_threshold:
+            best_thresh, _, _ = _select_threshold_precision_priority(
+                scores_val_raw, y_val_eval, min_precision=min_precision, zero_fp_priority=zero_fp_priority
+            )
             thresh_src = "precision_priority (val)"
         else:
-            best_thresh, _, _ = _select_threshold_precision_priority(scores_test, y_test)
+            best_thresh, _, _ = _select_threshold_precision_priority(
+                scores_test, y_test_eval, min_precision=min_precision, zero_fp_priority=zero_fp_priority
+            )
             thresh_src = "precision_priority (test, val too small)"
-        pred_dream = (scores_test >= best_thresh).astype(int)
-        cm = confusion_matrix(y_test, pred_dream)
+        eff_thresh = best_thresh * (1.0 + threshold_margin) if threshold_margin > 0 else best_thresh
+        if threshold_margin > 0:
+            thresh_src += f" margin={threshold_margin}"
+        pred_dream_eval = (scores_test >= eff_thresh).astype(int)
+        cm = confusion_matrix(y_test_eval, pred_dream_eval)
+        # Expand to frame-level for hard_subset (map dataset pred to each frame)
+        if use_ds_eval:
+            ds_to_pred = dict(zip(paths_test_agg, pred_dream_eval))
+            pred_dream = np.array([ds_to_pred.get(str(p), 0) for p in norm_test["dataset_path"].values])
+        else:
+            pred_dream = pred_dream_eval
         results["DREAM"] = {
             "roc_auc": float(roc),
             "best_threshold": float(best_thresh),
@@ -219,6 +384,9 @@ def _run_evaluation_and_get_predictions(max_train: int | None = None) -> tuple[d
             "confusion_matrix": cm.tolist(),
             "tn": int(cm[0, 0]), "fp": int(cm[0, 1]), "fn": int(cm[1, 0]), "tp": int(cm[1, 1]),
         }
+        pred_dream_eval_for_ens: np.ndarray | None = pred_dream_eval if use_ds_eval else pred_dream
+    else:
+        pred_dream_eval_for_ens = None
 
     # PatchCore
     res = run_patchcore_training(
@@ -231,17 +399,54 @@ def _run_evaluation_and_get_predictions(max_train: int | None = None) -> tuple[d
         from motionanalyzer.ml_models.patchcore import PatchCoreScikitLearn
         model = PatchCoreScikitLearn(feature_dim=len(feature_cols))
         model.load(res["model_path"])
-        scores_test = model.predict(pd.DataFrame(X_test, columns=feature_cols))
-        roc = roc_auc_score(y_test, scores_test)
-        if use_val_for_threshold:
-            scores_val = model.predict(pd.DataFrame(X_val, columns=feature_cols))
-            best_thresh, _, _ = _select_threshold_precision_priority(scores_val, y_val)
+        scores_test_raw = model.predict(pd.DataFrame(X_test, columns=feature_cols))
+        scores_val_raw = model.predict(pd.DataFrame(X_val, columns=feature_cols)) if use_val_for_threshold else scores_test_raw
+        y_val_eval_pc, y_test_eval_pc = y_val, y_test
+        paths_test_agg_pc: list = []
+        if use_ds_eval:
+            scores_val_raw, y_val_eval_pc, _ = _aggregate_by_dataset(
+                scores_val_raw, y_val, norm_val["dataset_path"]
+            )
+            scores_test_raw, y_test_eval_pc, paths_test_agg_pc = _aggregate_by_dataset(
+                scores_test_raw, y_test, norm_test["dataset_path"]
+            )
+        scores_test_pc = scores_test_raw
+        roc = roc_auc_score(y_test_eval_pc, scores_test_pc)
+        if threshold_percentile is not None:
+            best_thresh, _, _ = _select_threshold_normal_percentile(
+                scores_val_raw if use_val_for_threshold else scores_test_raw,
+                y_val_eval_pc if use_val_for_threshold else y_test_eval_pc,
+                percentile=threshold_percentile,
+            )
+            thresh_src = f"normal_percentile={threshold_percentile} (val)" if use_val_for_threshold else f"normal_percentile={threshold_percentile} (test)"
+        elif normal_fp_max is not None:
+            best_thresh, _, _ = _select_threshold_normal_fp_capped(
+                scores_val_raw if use_val_for_threshold else scores_test_raw,
+                y_val_eval_pc if use_val_for_threshold else y_test_eval_pc,
+                max_fp=normal_fp_max,
+            )
+            thresh_src = f"normal_fp_max={normal_fp_max} (val)" if use_val_for_threshold else f"normal_fp_max={normal_fp_max} (test)"
+        elif use_val_for_threshold:
+            best_thresh, _, _ = _select_threshold_precision_priority(
+                scores_val_raw, y_val_eval_pc, min_precision=min_precision, zero_fp_priority=zero_fp_priority
+            )
             thresh_src = "precision_priority (val)"
         else:
-            best_thresh, _, _ = _select_threshold_precision_priority(scores_test, y_test)
+            best_thresh, _, _ = _select_threshold_precision_priority(
+                scores_test_pc, y_test_eval_pc, min_precision=min_precision, zero_fp_priority=zero_fp_priority
+            )
             thresh_src = "precision_priority (test, val too small)"
-        pred_patchcore = (scores_test >= best_thresh).astype(int)
-        cm = confusion_matrix(y_test, pred_patchcore)
+        if threshold_margin > 0:
+            thresh_src += f" margin={threshold_margin}"
+        eff_thresh_pc = best_thresh * (1.0 + threshold_margin) if threshold_margin > 0 else best_thresh
+        pred_patchcore_eval = (scores_test_pc >= eff_thresh_pc).astype(int)
+        cm = confusion_matrix(y_test_eval_pc, pred_patchcore_eval)
+        if use_ds_eval:
+            ds_to_pred_pc = dict(zip(paths_test_agg_pc, pred_patchcore_eval))
+            pred_patchcore = np.array([ds_to_pred_pc.get(str(p), 0) for p in norm_test["dataset_path"].values])
+        else:
+            pred_patchcore = pred_patchcore_eval
+        pred_patchcore_eval_for_ens = pred_patchcore_eval if use_ds_eval else pred_patchcore
         results["PatchCore"] = {
             "roc_auc": float(roc),
             "best_threshold": float(best_thresh),
@@ -249,12 +454,20 @@ def _run_evaluation_and_get_predictions(max_train: int | None = None) -> tuple[d
             "confusion_matrix": cm.tolist(),
             "tn": int(cm[0, 0]), "fp": int(cm[0, 1]), "fn": int(cm[1, 0]), "tp": int(cm[1, 1]),
         }
+    else:
+        pred_patchcore_eval_for_ens = None
 
     # Ensemble (Phase 3.2): both DREAM and PatchCore predict Crack → Crack
     pred_ensemble: np.ndarray | None = None
     if pred_dream is not None and pred_patchcore is not None:
-        pred_ensemble = ((pred_dream == 1) & (pred_patchcore == 1)).astype(int)
-        cm_ens = confusion_matrix(y_test, pred_ensemble)
+        if use_ds_eval and pred_dream_eval_for_ens is not None and pred_patchcore_eval_for_ens is not None:
+            pred_ens_eval = ((pred_dream_eval_for_ens == 1) & (pred_patchcore_eval_for_ens == 1)).astype(int)
+            cm_ens = confusion_matrix(y_test_eval_pc, pred_ens_eval)
+            ds_to_pred_ens = dict(zip(paths_test_agg_pc, pred_ens_eval))
+            pred_ensemble = np.array([ds_to_pred_ens.get(str(p), 0) for p in norm_test["dataset_path"].values])
+        else:
+            pred_ensemble = ((pred_dream == 1) & (pred_patchcore == 1)).astype(int)
+            cm_ens = confusion_matrix(y_test, pred_ensemble)
         results["Ensemble"] = {
             "roc_auc": 0.0,  # N/A for ensemble
             "best_threshold": 0.0,
@@ -263,7 +476,8 @@ def _run_evaluation_and_get_predictions(max_train: int | None = None) -> tuple[d
             "tn": int(cm_ens[0, 0]), "fp": int(cm_ens[0, 1]), "fn": int(cm_ens[1, 0]), "tp": int(cm_ens[1, 1]),
         }
 
-    return results, {"DREAM": pred_dream, "PatchCore": pred_patchcore, "Ensemble": pred_ensemble}, y_test, norm_test, {
+    y_return = y_test_eval_ret if use_ds_eval else y_test
+    return results, {"DREAM": pred_dream, "PatchCore": pred_patchcore, "Ensemble": pred_ensemble}, y_return, norm_test, {
         "hard_normal_list": hard_normal_list,
         "hard_crack_list": hard_crack_list,
         "hard_normal_paths": hard_normal_paths,
@@ -272,71 +486,72 @@ def _run_evaluation_and_get_predictions(max_train: int | None = None) -> tuple[d
 
 
 def _plot_confusion_matrix(cm: np.ndarray, model_name: str, out_path: Path) -> None:
-    """Plot confusion matrix heatmap."""
+    """Plot confusion matrix heatmap (publication quality)."""
     import matplotlib.pyplot as plt
 
-    fig, ax = plt.subplots(figsize=(6, 5))
-    im = ax.imshow(cm, cmap="Blues", aspect="auto", vmin=0, vmax=cm.max() or 1)
+    plt.rcParams.update({"font.family": "sans-serif", "font.size": 11})
+    fig, ax = plt.subplots(figsize=(5, 4.5))
+    vmax = cm.max() or 1
+    im = ax.imshow(cm, cmap="Blues", aspect="auto", vmin=0, vmax=vmax)
 
     ax.set_xticks([0, 1])
-    ax.set_xticklabels(["Predicted Normal", "Predicted Crack"])
+    ax.set_xticklabels(["Pred. Normal", "Pred. Crack"], fontsize=10)
     ax.set_yticks([0, 1])
-    ax.set_yticklabels(["Actual Normal", "Actual Crack"])
-    ax.set_xlabel("Prediction")
-    ax.set_ylabel("Ground Truth")
+    ax.set_yticklabels(["Actual Normal", "Actual Crack"], fontsize=10)
+    ax.set_xlabel("Prediction", fontsize=11)
+    ax.set_ylabel("Ground Truth", fontsize=11)
 
     for i in range(2):
         for j in range(2):
-            ax.text(j, i, str(int(cm[i, j])), ha="center", va="center", fontsize=24, color="black")
+            val = int(cm[i, j])
+            color = "white" if val > vmax * 0.6 else "black"
+            ax.text(j, i, str(val), ha="center", va="center", fontsize=18, fontweight="bold", color=color)
 
-    plt.colorbar(im, ax=ax, label="Count")
-    ax.set_title(f"Confusion Matrix — {model_name} (Goal 1: Bending-in-process crack)")
+    cbar = plt.colorbar(im, ax=ax, label="Count", shrink=0.8)
+    cbar.ax.tick_params(labelsize=9)
+    ax.set_title(f"{model_name} Confusion Matrix", fontsize=12, fontweight="bold")
     plt.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.savefig(out_path, dpi=300, bbox_inches="tight", facecolor="white")
     plt.close()
 
 
 def _create_insights_summary_figure(results: dict, y_test: np.ndarray, out_path: Path) -> None:
-    """Create a summary figure with key metrics and insights."""
+    """Create a summary figure with key metrics (publication quality)."""
     import matplotlib.pyplot as plt
 
+    plt.rcParams.update({"font.family": "sans-serif", "font.size": 10})
     n_normal = int((y_test == 0).sum())
     n_crack = int((y_test == 1).sum())
     n_total = len(y_test)
 
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(8, 5))
     ax.axis("off")
 
     lines = [
-        "Crack Detection Performance — Summary",
+        "Crack Detection Performance - Summary",
         "",
-        f"Test set: {n_total} samples ({n_normal} normal, {n_crack} crack)",
+        f"Test set: {n_total:,} samples ({n_normal:,} normal, {n_crack:,} crack)",
         "",
-        "Confusion Matrix (per model):",
+        "Model Metrics:",
     ]
     for model_name, res in results.items():
         tn, fp, fn, tp = res["tn"], res["fp"], res["fn"], res["tp"]
         prec = tp / (tp + fp) if (tp + fp) > 0 else 0
         rec = tp / (tp + fn) if (tp + fn) > 0 else 0
-        f1 = 2 * prec * rec / (prec + rec) if (prec + rec) > 0 else 0
         lines.extend([
-            f"  {model_name}: TN={tn}, FP={fp}, FN={fn}, TP={tp}",
-            f"    Precision={prec:.4f}, Recall={rec:.4f}, F1={f1:.4f}",
-            "",
+            f"  {model_name}: P={prec:.2%}, R={rec:.2%} | TN={tn}, FP={fp}, FN={fn}, TP={tp}",
         ])
     lines.extend([
-        "Key Insights:",
-        "- FP=0: No false alarms (normal misclassified as crack)",
-        "- FN=0: No missed cracks (crack misclassified as normal)",
-        "- Synthetic data: Validate locally before real data. Domain gap exists.",
+        "",
+        "Key: FP = false alarms; FN = missed cracks. Lower FP improves precision.",
     ])
-    ax.text(0.05, 0.95, "\n".join(lines), transform=ax.transAxes, fontsize=11,
+    ax.text(0.05, 0.95, "\n".join(lines), transform=ax.transAxes, fontsize=10,
             verticalalignment="top", fontfamily="monospace",
-            bbox=dict(boxstyle="round", facecolor="wheat", alpha=0.5))
+            bbox=dict(boxstyle="round", facecolor="#f8f9fa", edgecolor="#dee2e6"))
     plt.tight_layout()
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(out_path, dpi=120, bbox_inches="tight")
+    plt.savefig(out_path, dpi=300, bbox_inches="tight", facecolor="white")
     plt.close()
 
 
@@ -354,7 +569,7 @@ def _create_vector_map(bundle_dir: Path, output_path: Path) -> None:
         vectors_csv,
         output_path,
         fps=30.0,
-        dpi=120,
+        dpi=300,
     )
     # Cleanup temp
     import shutil
@@ -403,6 +618,30 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Crack detection performance analysis")
     parser.add_argument("--max-train", type=int, default=None,
                         help="Limit train samples per class for faster runs (e.g. 2000)")
+    parser.add_argument(
+        "--base-dir",
+        type=str,
+        default=str(DEFAULT_BASE),
+        help="Train+val dataset base (manifest + scenario folders)",
+    )
+    parser.add_argument(
+        "--test-base-dir",
+        type=str,
+        default=None,
+        help="Test dataset base (e.g. 100k test for cross-eval); if set, eval on this test split",
+    )
+    parser.add_argument("--dataset-level-eval", action="store_true",
+                        help="Aggregate scores by dataset (max per video) for evaluation")
+    parser.add_argument("--min-precision", type=float, default=MIN_PRECISION,
+                        help=f"Target min precision for threshold selection (default {MIN_PRECISION})")
+    parser.add_argument("--zero-fp-priority", action="store_true",
+                        help="Prefer threshold with FP=0 on validation")
+    parser.add_argument("--normal-fp-max", type=int, default=None,
+                        help="Cap FP on normal: select threshold with FP<=N (e.g. 0 for FP=0)")
+    parser.add_argument("--threshold-margin", type=float, default=0.0,
+                        help="Extra margin: use threshold*(1+margin) for more conservative predictions")
+    parser.add_argument("--threshold-percentile", type=float, default=None,
+                        help="Use normal score percentile as threshold (e.g. 99.9 for ~0.1%% FP rate)")
     args = parser.parse_args()
 
     print("=" * 60)
@@ -416,7 +655,19 @@ def main() -> None:
 
     # 1. Run evaluation and get predictions
     print("\n[1/5] Running Goal 1 ML evaluation (DREAM, PatchCore)...")
-    results, preds, y_test, feat_test, hard_info = _run_evaluation_and_get_predictions(max_train=args.max_train)
+    if args.dataset_level_eval:
+        print("  (dataset-level eval: aggregate by video)")
+    results, preds, y_test, feat_test, hard_info = _run_evaluation_and_get_predictions(
+        max_train=args.max_train,
+        base_dir=Path(args.base_dir),
+        test_base_dir=Path(args.test_base_dir) if args.test_base_dir else None,
+        dataset_level_eval=args.dataset_level_eval,
+        min_precision=args.min_precision,
+        zero_fp_priority=args.zero_fp_priority,
+        normal_fp_max=args.normal_fp_max,
+        threshold_margin=args.threshold_margin,
+        threshold_percentile=args.threshold_percentile,
+    )
 
     # 2. Hard subset metrics (light_distortion, micro_crack)
     hard_metrics = {}
@@ -436,8 +687,9 @@ def main() -> None:
 
     # 4. Vector maps (normal vs crack sample)
     print("[4/5] Creating vector map images...")
-    normal_sample = BASE / "normal" / "normal_0001"
-    crack_sample = BASE / "crack_in_bending" / "crack_0001"
+    base = Path(args.base_dir)
+    normal_sample = base / "normal" / "normal_0001"
+    crack_sample = base / "crack_in_bending" / "crack_0001"
     if normal_sample.exists():
         _create_vector_map(normal_sample, OUT_DIR / "vector_map_normal.png")
     if crack_sample.exists():
@@ -445,9 +697,13 @@ def main() -> None:
 
     # 5. Save JSON and insights
     print("[5/5] Writing analysis report...")
+    n_normal_test = int((y_test == 0).sum())
+    for model_res in results.values():
+        fp = model_res.get("fp", 0)
+        model_res["normal_fp_rate"] = fp / n_normal_test if n_normal_test > 0 else 0.0
     analysis = {
         "n_test": len(y_test),
-        "n_normal": int((y_test == 0).sum()),
+        "n_normal": n_normal_test,
         "n_crack": int((y_test == 1).sum()),
         "models": results,
         "hard_subset_metrics": hard_metrics,
@@ -457,17 +713,31 @@ def main() -> None:
         encoding="utf-8",
     )
 
+    # Build comparison table (DREAM vs PatchCore vs Ensemble)
+    eval_note = f", test={args.test_base_dir}" if args.test_base_dir else ""
     insights: list[str] = [
         "# Crack Detection Performance — Insights",
         "",
-        "## 1. Confusion Matrix Summary",
+        f"**Eval setup**: train={args.base_dir}{eval_note}",
         "",
+        "## 0. Model Comparison (Confusion Matrix)",
+        "",
+        "| Model | TN | FP | FN | TP | Precision | Recall | Normal FP Rate |",
+        "|-------|----|----|----|-----|-----------|--------|----------------|",
     ]
     for model_name, model_res in results.items():
         tn, fp, fn, tp = model_res["tn"], model_res["fp"], model_res["fn"], model_res["tp"]
         precision = tp / (tp + fp) if (tp + fp) > 0 else 0
         recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+        normal_fp_rate = model_res.get("normal_fp_rate", fp / n_normal_test if n_normal_test > 0 else 0)
+        insights.append(f"| {model_name} | {tn} | {fp} | {fn} | {tp} | {precision:.4f} | {recall:.4f} | {normal_fp_rate:.4%} |")
+    insights.extend(["", "## 1. Confusion Matrix Summary (per model)", ""])
+    for model_name, model_res in results.items():
+        tn, fp, fn, tp = model_res["tn"], model_res["fp"], model_res["fn"], model_res["tp"]
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 0
         f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+        normal_fp_rate = model_res.get("normal_fp_rate", fp / n_normal_test if n_normal_test > 0 else 0)
         insights.extend([
             f"### {model_name}",
             "",
@@ -475,6 +745,7 @@ def main() -> None:
             f"|--------|-------|",
             f"| True Negative (TN) | {tn} |",
             f"| False Positive (FP) | {fp} |",
+            f"| Normal FP Rate | {normal_fp_rate:.4%} |",
             f"| False Negative (FN) | {fn} |",
             f"| True Positive (TP) | {tp} |",
             f"| Precision | {precision:.4f} |",
@@ -531,8 +802,7 @@ def main() -> None:
     print()
     print("Done. Output:")
     print(f"  {OUT_DIR}/")
-    print(f"  - confusion_matrix_dream.png")
-    print(f"  - confusion_matrix_patchcore.png")
+    print(f"  - confusion_matrix_dream.png, confusion_matrix_patchcore.png, confusion_matrix_ensemble.png")
     print(f"  - vector_map_normal.png")
     print(f"  - vector_map_crack.png")
     print(f"  - analysis.json")

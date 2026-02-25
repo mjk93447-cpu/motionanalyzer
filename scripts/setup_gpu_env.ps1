@@ -25,8 +25,8 @@ Write-Host "`n[2/5] Installing motionanalyzer + ML deps..." -ForegroundColor Yel
 Write-Host "`n[3/5] Installing PyTorch (CUDA 12.1)..." -ForegroundColor Yellow
 & "$venvPath\Scripts\pip.exe" install torch --index-url https://download.pytorch.org/whl/cu121 -q
 
-# 4. GPU requirements
-Write-Host "`n[4/5] Installing Jupyter, joblib..." -ForegroundColor Yellow
+# 4. GPU requirements (includes pytest for verify_agent_handoff)
+Write-Host "`n[4/5] Installing Jupyter, joblib, pytest..." -ForegroundColor Yellow
 & "$venvPath\Scripts\pip.exe" install -r requirements-gpu.txt -q
 
 # 5. Jupyter kernel 등록

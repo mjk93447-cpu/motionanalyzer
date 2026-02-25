@@ -1,0 +1,6 @@
+FPCB bending crack detection pipeline:
+1) Input: contour trajectory frames from bending process
+2) Feature extraction: velocity, acceleration, curvature, strain surrogate per frame
+3) Two anomaly detectors in parallel: DREAM (reconstruction + discriminator) and PatchCore (memory bank + k-NN)
+4) Ensemble: logical AND - predict crack only when both models agree
+5) Output: binary label (normal / crack)

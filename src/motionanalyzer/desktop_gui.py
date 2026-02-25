@@ -1777,6 +1777,8 @@ For more information:
             if result.returncode == 0:
                 self._append_synthetic_log("Done.")
                 summary_path = _project_root() / "reports" / "goal_achievement_summary.md"
+                if not summary_path.exists():
+                    summary_path = _project_root() / "reports" / "crack_detection_analysis" / "insights.md"
                 if summary_path.exists():
                     self._append_synthetic_log("\n--- Summary ---\n")
                     self._append_synthetic_log(summary_path.read_text(encoding="utf-8"))

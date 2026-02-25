@@ -8,9 +8,11 @@ alwaysApply: true
 # Cursor Tooling Optimization
 
 - Prefer project skill `.cursor/skills/ai-coding-accelerator/SKILL.md` for coding tasks.
+- For handoff/verification: `.cursor/skills/agent-performance/SKILL.md`
 - Use shell tools for command execution, validation, and reproducible checkpoints.
 - Keep command usage deterministic and concise; avoid ambiguous one-liners.
 - For long multi-step sessions, use compaction-aware workflow:
   - close one objective before starting the next
   - summarize decisions after major milestones
   - move durable guidance into rules/skills, not transient chat turns
+- GitHub: Use `.\scripts\git_backup.ps1` before major changes; `.\scripts\git_checkpoint.ps1 -Message "..."` for quick commits. See `docs/GITHUB_WORKFLOW_COMPLETE.md`.

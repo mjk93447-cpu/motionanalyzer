@@ -4,6 +4,10 @@ This is the canonical documentation entrypoint.
 
 ## Core
 
+- `DATASET_NAMING_RULE.md` - 데이터셋 코드 명명 규칙 (생성일-스크립트-목적-총수-프레임)
+- `AGENT_HANDOFF_QUICK_START.md` - **에이전트 핸드오프 시 즉시 실행 가이드**
+- `AGENT_VERIFICATION_AND_CACHING.md` - 검증 스크립트, 캐싱 전략, 객관적 지표
+- `AGENT_REFINEMENT_LOOP.md` - 반복 개선 루프 (상위 4% 달성)
 - `PROJECT_GOALS.md` - top-level objective and priority
 - `DEVELOPMENT_ROADMAP_FINAL.md` - execution roadmap
 - `PHASE_B_INSIGHTS.md` - key lessons and risk controls
@@ -17,6 +21,10 @@ This is the canonical documentation entrypoint.
 - `SECURE_TEST_POLICY.md`
 - `INTERNAL_REALDATA_SETUP.md`
 - `INTERNAL_REALDATA_TEST_SCENARIOS.md`
+
+## Tools & MCP
+
+- `MCP_SETUP.md` - MCP 서버 설정, Tools & MCP 활성화, 논문/로드맵 활용
 
 ## Architecture and Usage
 

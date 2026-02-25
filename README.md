@@ -129,16 +129,18 @@ motionanalyzer init-dirs
 motionanalyzer gui
 ```
 
-#### 예제 데이터셋으로 시작하기
+#### DS-002 데이터셋으로 시작하기
 
 ```powershell
-# 예제 데이터셋 생성 (5개 시나리오)
-python scripts/generate_example_datasets.py
-
-# 예제 데이터 분석
+# DS-002 (ml_dataset_fp_focused) 정상 시퀀스 분석
 motionanalyzer analyze-bundle `
-  --input-dir data/synthetic/examples/normal `
+  --input-dir data/synthetic/ml_dataset_fp_focused/normal/normal_0001 `
   --output-dir exports/vectors/example_normal
+
+# 크랙 시퀀스 분석
+motionanalyzer analyze-bundle `
+  --input-dir data/synthetic/ml_dataset_fp_focused/crack_in_bending/crack_0001 `
+  --output-dir exports/vectors/example_crack
 ```
 
 #### 합성 데이터 생성 및 분석
