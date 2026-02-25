@@ -1,45 +1,47 @@
 {
-  "n_test": 1159,
-  "n_normal": 976,
-  "n_crack": 183,
+  "n_test": 851,
+  "n_normal": 800,
+  "n_crack": 51,
   "models": {
     "DREAM": {
-      "roc_auc": 0.8945343993550121,
-      "best_threshold": 3.949352741241455,
-      "threshold_criterion": "precision_priority (val)",
+      "roc_auc": 1.0,
+      "best_threshold": 105.12820434570312,
+      "threshold_criterion": "normal_fp_max=0 (val)",
       "confusion_matrix": [
         [
-          949,
-          27
+          800,
+          0
         ],
         [
-          114,
-          69
+          1,
+          50
         ]
       ],
-      "tn": 949,
-      "fp": 27,
-      "fn": 114,
-      "tp": 69
+      "tn": 800,
+      "fp": 0,
+      "fn": 1,
+      "tp": 50,
+      "normal_fp_rate": 0.0
     },
     "PatchCore": {
-      "roc_auc": 0.9285642300456867,
-      "best_threshold": 14.116621971130371,
-      "threshold_criterion": "precision_priority (val)",
+      "roc_auc": 1.0,
+      "best_threshold": 74.0538101196289,
+      "threshold_criterion": "normal_fp_max=0 (val)",
       "confusion_matrix": [
         [
-          946,
-          30
+          800,
+          0
         ],
         [
-          113,
-          70
+          1,
+          50
         ]
       ],
-      "tn": 946,
-      "fp": 30,
-      "fn": 113,
-      "tp": 70
+      "tn": 800,
+      "fp": 0,
+      "fn": 1,
+      "tp": 50,
+      "normal_fp_rate": 0.0
     },
     "Ensemble": {
       "roc_auc": 0.0,
@@ -47,54 +49,55 @@
       "threshold_criterion": "both_agree",
       "confusion_matrix": [
         [
-          956,
-          20
+          800,
+          0
         ],
         [
-          115,
-          68
+          1,
+          50
         ]
       ],
-      "tn": 956,
-      "fp": 20,
-      "fn": 115,
-      "tp": 68
+      "tn": 800,
+      "fp": 0,
+      "fn": 1,
+      "tp": 50,
+      "normal_fp_rate": 0.0
     }
   },
   "hard_subset_metrics": {
     "DREAM": {
       "light_distortion": {
-        "n": 1,
-        "correct_as_normal": 0,
-        "acc": 0.0
+        "n": 50,
+        "correct_as_normal": 50,
+        "acc": 1.0
       },
       "micro_crack": {
-        "n": 1,
-        "correct_as_crack": 1,
+        "n": 10,
+        "correct_as_crack": 10,
         "acc": 1.0
       }
     },
     "PatchCore": {
       "light_distortion": {
-        "n": 1,
-        "correct_as_normal": 0,
-        "acc": 0.0
+        "n": 50,
+        "correct_as_normal": 50,
+        "acc": 1.0
       },
       "micro_crack": {
-        "n": 1,
-        "correct_as_crack": 1,
+        "n": 10,
+        "correct_as_crack": 10,
         "acc": 1.0
       }
     },
     "Ensemble": {
       "light_distortion": {
-        "n": 1,
-        "correct_as_normal": 0,
-        "acc": 0.0
+        "n": 50,
+        "correct_as_normal": 50,
+        "acc": 1.0
       },
       "micro_crack": {
-        "n": 1,
-        "correct_as_crack": 1,
+        "n": 10,
+        "correct_as_crack": 10,
         "acc": 1.0
       }
     }

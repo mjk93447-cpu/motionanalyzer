@@ -1,7 +1,7 @@
 """
 Generate ML training/evaluation synthetic dataset.
 
-Scale: 1000 normal, 80 crack_in_bending (Goal 1), 20 pre_damaged (Goal 2).
+Scale: configurable up to 100k with diversified anomaly scenarios.
 Tags: goal, label, scenario, crack_frame, split.
 Output: data/synthetic/ml_dataset/ + manifest.json.
 
@@ -33,13 +33,16 @@ from motionanalyzer.synthetic import NoiseMode
 
 FRAMES = 60
 FPS = 30.0
-SPLIT_RATIOS = (0.70, 0.15, 0.15)  # train, val, test (strict separation)
+DEFAULT_SPLIT_RATIOS = (0.90, 0.05, 0.05)  # train, val, test (precision-focused)
 
-# Scale presets: (normal, light_dist, crack, uv, micro, predam, thick)
+# Scale presets:
+# (normal, light_dist, crack, uv, micro, predam, thick, overbend, underbend, jig_vibration)
 SCALE_CONFIGS: dict[str, tuple[int, ...]] = {
-    "default": (1000, 50, 50, 30, 10, 20, 20),   # ~1.2k
-    "10k": (7000, 500, 500, 300, 300, 500, 400),  # ~9.5k
-    "100k": (75000, 5000, 5000, 3000, 3000, 5000, 4000),  # 100k
+    "default": (1000, 50, 50, 30, 10, 20, 20, 20, 10, 10),    # 1,220
+    "10k": (7000, 500, 500, 300, 300, 500, 400, 300, 100, 100),  # 10,000
+    "100k": (70000, 5000, 5000, 3000, 3000, 4000, 5000, 3000, 1000, 1000),  # 100,000
+    # Normal 94%, Crack 6%: 실제 공정 반영, crack은 학습에 충분
+    "fp_focused": (15000, 1000, 300, 300, 200, 150, 2800, 100, 100, 50),  # 20,000
 }
 NOISE_MODES: tuple[NoiseMode, ...] = ("gaussian", "outlier", "temporal_drift", "scale_jitter", "mixed")
 
@@ -62,9 +65,9 @@ def _noise_mode_for_seed(seed: int) -> NoiseMode:
     return NOISE_MODES[seed % len(NOISE_MODES)]
 
 
-def _assign_split(rng: np.random.Generator, n: int) -> list[str]:
-    train_n = int(n * SPLIT_RATIOS[0])
-    val_n = int(n * SPLIT_RATIOS[1])
+def _assign_split(rng: np.random.Generator, n: int, split_ratios: tuple[float, float, float]) -> list[str]:
+    train_n = int(n * split_ratios[0])
+    val_n = int(n * split_ratios[1])
     test_n = n - train_n - val_n
     splits = ["train"] * train_n + ["val"] * val_n + ["test"] * test_n
     rng.shuffle(splits)
@@ -108,24 +111,47 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Generate ML synthetic dataset")
     parser.add_argument("--dry-run", action="store_true", help="Print plan only, do not generate")
     parser.add_argument("--small", action="store_true", help="Small set: 100 normal, 10 crack, 5 predam (quick test)")
-    parser.add_argument("--scale", choices=["default", "10k", "100k"], default="default",
-                        help="Dataset scale: default (~1.2k), 10k (~9.5k), 100k")
+    parser.add_argument("--scale", choices=["default", "10k", "100k", "fp_focused"], default="default",
+                        help="Dataset scale: default, 10k, 100k, fp_focused (94%% normal, 6%% crack)")
     parser.add_argument("--workers", type=int, default=1,
                         help="Parallel workers for generation (default 1 = sequential)")
+    parser.add_argument("--output-dir", type=str, default="data/synthetic/ml_dataset",
+                        help="Output dataset directory")
+    parser.add_argument("--split-train", type=float, default=DEFAULT_SPLIT_RATIOS[0], help="Train split ratio")
+    parser.add_argument("--split-val", type=float, default=DEFAULT_SPLIT_RATIOS[1], help="Validation split ratio")
+    parser.add_argument("--split-test", type=float, default=DEFAULT_SPLIT_RATIOS[2], help="Test split ratio")
     parser.add_argument("--seed", type=int, default=20260219)
+    parser.add_argument("--resume", action="store_true", help="Skip existing samples (metadata.json present)")
     args = parser.parse_args()
 
+    split_ratios = (args.split_train, args.split_val, args.split_test)
+    if abs(sum(split_ratios) - 1.0) > 1e-9:
+        raise ValueError(f"Split ratios must sum to 1.0, got {split_ratios}")
+
     if args.small:
-        n_normal, n_light_dist, n_crack_main, n_uv, n_micro_crack, n_predam, n_thick = 100, 3, 7, 3, 2, 5, 5
+        n_normal, n_light_dist, n_crack_main, n_uv, n_micro_crack, n_predam, n_thick, n_overbend, n_underbend, n_jig = (
+            100, 3, 7, 3, 2, 5, 5, 4, 1, 1
+        )
     else:
         cfg = SCALE_CONFIGS[args.scale]
-        n_normal, n_light_dist, n_crack_main, n_uv, n_micro_crack, n_predam, n_thick = cfg
+        (
+            n_normal,
+            n_light_dist,
+            n_crack_main,
+            n_uv,
+            n_micro_crack,
+            n_predam,
+            n_thick,
+            n_overbend,
+            n_underbend,
+            n_jig,
+        ) = cfg
     n_crack = n_crack_main + n_uv  # crack_in_bending total
 
-    base_dir = repo_root / "data" / "synthetic" / "ml_dataset"
+    base_dir = (repo_root / Path(args.output_dir)).resolve()
     rng = np.random.default_rng(seed=args.seed)
 
-    total = n_normal + n_light_dist + n_crack + n_micro_crack + n_predam + n_thick
+    total = n_normal + n_light_dist + n_crack + n_micro_crack + n_predam + n_thick + n_overbend + n_underbend + n_jig
     print("=" * 60)
     print("ML Dataset Generator")
     print("=" * 60)
@@ -137,6 +163,12 @@ def main() -> None:
     print(f"  - {n_micro_crack} micro_crack (초미세 크랙)")
     print(f"  - {n_predam} pre_damaged (Goal 2)")
     print(f"  - {n_thick} thick_panel (variant)")
+    print(f"  - {n_overbend} over_bending (trajectory anomaly)")
+    print(f"  - {n_underbend} under_bending (trajectory anomaly)")
+    print(f"  - {n_jig} jig_vibration (jig micro-shake anomaly)")
+    crack_like_total = n_crack + n_micro_crack + n_predam + n_overbend + n_underbend + n_jig
+    print(f"Crack-like ratio: {100.0 * crack_like_total / total:.2f}%")
+    print(f"Split ratios: train={split_ratios[0]:.2f}, val={split_ratios[1]:.2f}, test={split_ratios[2]:.2f}")
     print()
 
     if args.dry_run:
@@ -151,12 +183,15 @@ def main() -> None:
         return
 
     manifest_entries: list[dict] = []
-    normal_splits = _assign_split(rng, n_normal)
-    light_dist_splits = _assign_split(rng, n_light_dist)
-    crack_splits = _assign_split(rng, n_crack)
-    micro_crack_splits = _assign_split(rng, n_micro_crack)
-    predam_splits = _assign_split(rng, n_predam)
-    thick_splits = _assign_split(rng, n_thick)
+    normal_splits = _assign_split(rng, n_normal, split_ratios)
+    light_dist_splits = _assign_split(rng, n_light_dist, split_ratios)
+    crack_splits = _assign_split(rng, n_crack, split_ratios)
+    micro_crack_splits = _assign_split(rng, n_micro_crack, split_ratios)
+    predam_splits = _assign_split(rng, n_predam, split_ratios)
+    thick_splits = _assign_split(rng, n_thick, split_ratios)
+    overbend_splits = _assign_split(rng, n_overbend, split_ratios)
+    underbend_splits = _assign_split(rng, n_underbend, split_ratios)
+    jig_splits = _assign_split(rng, n_jig, split_ratios)
 
     # --- Normal ---
     normal_dir = base_dir / "normal"
@@ -170,6 +205,9 @@ def main() -> None:
         for i in range(1, n_normal + 1):
             vid_name = f"normal_{i:04d}"
             out = normal_dir / vid_name
+            if args.resume and (out / "metadata.json").exists():
+                manifest_entries.append({"path": f"normal/{vid_name}", "goal": "normal", "label": 0, "split": normal_splits[i - 1]})
+                continue
             seed = 100000 + i
             points = _randint(rng, NORMAL_POINTS_RANGE[0], NORMAL_POINTS_RANGE[1])
             noise = _rand(rng, NORMAL_NOISE_RANGE[0], NORMAL_NOISE_RANGE[1])
@@ -204,6 +242,11 @@ def main() -> None:
         for i in range(1, n_normal + 1):
             vid_name = f"normal_{i:04d}"
             out = normal_dir / vid_name
+            if args.resume and (out / "metadata.json").exists():
+                manifest_entries.append({"path": f"normal/{vid_name}", "goal": "normal", "label": 0, "split": normal_splits[i - 1]})
+                if i % 5000 == 0 or i == n_normal:
+                    print(f"  [OK] {i}/{n_normal} (resumed)")
+                continue
             out.mkdir(parents=True, exist_ok=True)
 
             seed = 100000 + i
@@ -253,6 +296,9 @@ def main() -> None:
     for i in range(1, n_light_dist + 1):
         vid_name = f"normal_ld_{i:04d}"
         out = normal_dir / vid_name
+        if args.resume and (out / "metadata.json").exists():
+            manifest_entries.append({"path": f"normal/{vid_name}", "goal": "normal", "label": 0, "split": light_dist_splits[i - 1], "scenario": "light_distortion"})
+            continue
         out.mkdir(parents=True, exist_ok=True)
 
         seed = 150000 + i
@@ -306,6 +352,13 @@ def main() -> None:
         scenario = "crack" if use_crack else "uv_overcured"
         vid_name = f"crack_{i:04d}"
         out = crack_dir / vid_name
+        if args.resume and (out / "metadata.json").exists():
+            rng_i = np.random.default_rng(200000 + i * 137)
+            crack_frame = int(_rand(rng_i, 0.65, 0.80) * (FRAMES - 1)) if FRAMES > 1 else -1
+            manifest_entries.append({"path": f"crack_in_bending/{vid_name}", "goal": "goal1", "label": 1, "split": crack_splits[i - 1], "crack_frame": crack_frame})
+            if i % 500 == 0 or i == n_crack:
+                print(f"  [OK] {i}/{n_crack} (resumed)")
+            continue
         out.mkdir(parents=True, exist_ok=True)
 
         crack_center = _rand(rng, 0.65, 0.80)
@@ -358,6 +411,9 @@ def main() -> None:
     for i in range(1, n_micro_crack + 1):
         vid_name = f"micro_{i:04d}"
         out = crack_dir / vid_name
+        if args.resume and (out / "metadata.json").exists():
+            manifest_entries.append({"path": f"crack_in_bending/{vid_name}", "goal": "goal1", "label": 1, "split": micro_crack_splits[i - 1], "scenario": "micro_crack"})
+            continue
         out.mkdir(parents=True, exist_ok=True)
 
         crack_center = _rand(rng, 0.65, 0.80)
@@ -412,6 +468,9 @@ def main() -> None:
     for i in range(1, n_predam + 1):
         vid_name = f"predam_{i:04d}"
         out = predam_dir / vid_name
+        if args.resume and (out / "metadata.json").exists():
+            manifest_entries.append({"path": f"pre_damaged/{vid_name}", "goal": "goal2", "label": 1, "split": predam_splits[i - 1]})
+            continue
         out.mkdir(parents=True, exist_ok=True)
 
         seed = 300000 + i * 97
@@ -462,6 +521,11 @@ def main() -> None:
     for i in range(1, n_thick + 1):
         vid_name = f"thick_{i:04d}"
         out = thick_dir / vid_name
+        if args.resume and (out / "metadata.json").exists():
+            manifest_entries.append({"path": f"thick_panel/{vid_name}", "goal": "variant", "label": 0, "split": thick_splits[i - 1]})
+            if i % 500 == 0 or i == n_thick:
+                print(f"  [OK] {i}/{n_thick} (resumed)")
+            continue
         out.mkdir(parents=True, exist_ok=True)
 
         seed = 400000 + i * 73
@@ -505,6 +569,132 @@ def main() -> None:
         if i % log_every == 0 or i == n_thick:
             print(f"  [OK] {i}/{n_thick}")
 
+    # --- Over-bending anomaly (label=1) ---
+    print("\nGenerating over_bending...")
+    for i in range(1, n_overbend + 1):
+        vid_name = f"overbend_{i:04d}"
+        out = crack_dir / vid_name
+        if args.resume and (out / "metadata.json").exists():
+            manifest_entries.append({"path": f"crack_in_bending/{vid_name}", "goal": "goal1", "label": 1, "split": overbend_splits[i - 1], "scenario": "over_bending"})
+            continue
+        out.mkdir(parents=True, exist_ok=True)
+        seed = 450000 + i * 61
+        noise_mode = _noise_mode_for_seed(seed)
+        extra = {
+            "goal": "goal1",
+            "scenario": "over_bending",
+            "label": 1,
+            "crack_frame": int(_rand(rng, 0.62, 0.82) * (FRAMES - 1)),
+            "split": overbend_splits[i - 1],
+            "dataset_id": vid_name,
+            "noise_mode": noise_mode,
+        }
+        config = SyntheticConfig(
+            frames=FRAMES,
+            points_per_frame=_randint(rng, 210, 250),
+            fps=FPS,
+            width=1920,
+            height=1080,
+            panel_length_px=_rand(rng, 215, 245),
+            panel_thickness_um=90.0,
+            pixels_per_mm=10.0,
+            meters_per_pixel=1e-4,
+            noise_std=_rand(rng, 0.18, 0.35),
+            seed=seed,
+            scenario="over_bending",
+            noise_mode=noise_mode,
+        )
+        generate_synthetic_bundle(out, config, extra_metadata=extra)
+        manifest_entries.append(
+            {"path": f"crack_in_bending/{vid_name}", "goal": "goal1", "label": 1, "split": extra["split"], "scenario": "over_bending"}
+        )
+        if i % 250 == 0 or i == n_overbend:
+            print(f"  [OK] {i}/{n_overbend}")
+
+    # --- Under-bending anomaly (label=1) ---
+    print("\nGenerating under_bending...")
+    for i in range(1, n_underbend + 1):
+        vid_name = f"underbend_{i:04d}"
+        out = crack_dir / vid_name
+        if args.resume and (out / "metadata.json").exists():
+            manifest_entries.append({"path": f"crack_in_bending/{vid_name}", "goal": "goal1", "label": 1, "split": underbend_splits[i - 1], "scenario": "under_bending"})
+            continue
+        out.mkdir(parents=True, exist_ok=True)
+        seed = 470000 + i * 53
+        noise_mode = _noise_mode_for_seed(seed)
+        extra = {
+            "goal": "goal1",
+            "scenario": "under_bending",
+            "label": 1,
+            "crack_frame": int(_rand(rng, 0.62, 0.82) * (FRAMES - 1)),
+            "split": underbend_splits[i - 1],
+            "dataset_id": vid_name,
+            "noise_mode": noise_mode,
+        }
+        config = SyntheticConfig(
+            frames=FRAMES,
+            points_per_frame=_randint(rng, 210, 250),
+            fps=FPS,
+            width=1920,
+            height=1080,
+            panel_length_px=_rand(rng, 215, 245),
+            panel_thickness_um=90.0,
+            pixels_per_mm=10.0,
+            meters_per_pixel=1e-4,
+            noise_std=_rand(rng, 0.12, 0.30),
+            seed=seed,
+            scenario="under_bending",
+            noise_mode=noise_mode,
+        )
+        generate_synthetic_bundle(out, config, extra_metadata=extra)
+        manifest_entries.append(
+            {"path": f"crack_in_bending/{vid_name}", "goal": "goal1", "label": 1, "split": extra["split"], "scenario": "under_bending"}
+        )
+        if i % 250 == 0 or i == n_underbend:
+            print(f"  [OK] {i}/{n_underbend}")
+
+    # --- Jig vibration anomaly (label=1) ---
+    print("\nGenerating jig_vibration...")
+    for i in range(1, n_jig + 1):
+        vid_name = f"jigvib_{i:04d}"
+        out = crack_dir / vid_name
+        if args.resume and (out / "metadata.json").exists():
+            manifest_entries.append({"path": f"crack_in_bending/{vid_name}", "goal": "goal1", "label": 1, "split": jig_splits[i - 1], "scenario": "jig_vibration"})
+            continue
+        out.mkdir(parents=True, exist_ok=True)
+        seed = 490000 + i * 47
+        noise_mode = "mixed"
+        extra = {
+            "goal": "goal1",
+            "scenario": "jig_vibration",
+            "label": 1,
+            "crack_frame": int(_rand(rng, 0.62, 0.82) * (FRAMES - 1)),
+            "split": jig_splits[i - 1],
+            "dataset_id": vid_name,
+            "noise_mode": noise_mode,
+        }
+        config = SyntheticConfig(
+            frames=FRAMES,
+            points_per_frame=_randint(rng, 210, 250),
+            fps=FPS,
+            width=1920,
+            height=1080,
+            panel_length_px=_rand(rng, 215, 245),
+            panel_thickness_um=90.0,
+            pixels_per_mm=10.0,
+            meters_per_pixel=1e-4,
+            noise_std=_rand(rng, 0.18, 0.38),
+            seed=seed,
+            scenario="jig_vibration",
+            noise_mode=noise_mode,
+        )
+        generate_synthetic_bundle(out, config, extra_metadata=extra)
+        manifest_entries.append(
+            {"path": f"crack_in_bending/{vid_name}", "goal": "goal1", "label": 1, "split": extra["split"], "scenario": "jig_vibration"}
+        )
+        if i % 250 == 0 or i == n_jig:
+            print(f"  [OK] {i}/{n_jig}")
+
     # --- Manifest ---
     train_count = sum(1 for e in manifest_entries if e["split"] == "train")
     val_count = sum(1 for e in manifest_entries if e["split"] == "val")
@@ -519,6 +709,9 @@ def main() -> None:
         "micro_crack": n_micro_crack,
         "pre_damaged_panel": n_predam,
         "thick_panel": n_thick,
+        "over_bending": n_overbend,
+        "under_bending": n_underbend,
+        "jig_vibration": n_jig,
         "splits": {"train": train_count, "val": val_count, "test": test_count},
         "entries": manifest_entries,
     }

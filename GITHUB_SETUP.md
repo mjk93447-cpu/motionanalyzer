@@ -1,5 +1,8 @@
 # GitHub 설정 및 푸시
 
+**완전 가이드**: `docs/GITHUB_WORKFLOW_COMPLETE.md`  
+**평가**: `.\scripts\evaluate_github_setup.ps1`
+
 ## 1. GitHub 저장소 생성
 
 1. [GitHub](https://github.com/new)에서 새 저장소 생성

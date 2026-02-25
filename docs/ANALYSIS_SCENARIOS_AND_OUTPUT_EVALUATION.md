@@ -16,7 +16,7 @@
 
 ### 1.1 정상 벤딩 (normal_001) — metadata 스케일
 
-**경로**: `exports/vectors/fpcb_test_suite/normal_001/vector_map.png`
+**경로**: `exports/vectors/gui_test_scenarios/normal_0001/vector_map.png`
 
 | 항목 | 값 |
 |------|-----|
@@ -36,7 +36,7 @@
 
 ### 1.2 정상 벤딩 (normal_001) — Scale 0.1 mm/px 사용자 입력
 
-**경로**: `exports/vectors/fpcb_test_suite/normal_001_scale01/vector_map.png`
+**경로**: `exports/vectors/gui_test_scenarios/normal_0001_scale01/vector_map.png`
 
 | 항목 | 값 |
 |------|-----|
@@ -55,7 +55,7 @@
 
 ### 1.3 비정상(크랙) 벤딩 (crack_01_full_crack)
 
-**경로**: `exports/vectors/fpcb_test_suite/crack_01_full_crack/vector_map.png`
+**경로**: `exports/vectors/gui_test_scenarios/crack_0001/vector_map.png`
 
 | 항목 | 값 |
 |------|-----|
@@ -74,7 +74,7 @@
 
 ## 2. 정상 vs 비정상 수치 비교
 
-| 지표 | normal_001 | crack_01_full_crack | Delta |
+| 지표 | normal_0001 | crack_0001 | Delta |
 |------|------------|---------------------|-------|
 | mean_speed_m_s | 0.0059 | 0.0046 | -0.0013 |
 | max_speed_m_s | 0.026 | 0.073 | +0.047 |
@@ -140,7 +140,7 @@
 ### 시나리오 6: 배치 분석 (다수 영상)
 
 **목적**: 200개 정상 + 10개 크랙 일괄 분석  
-**입력**: fpcb_test_suite 전체  
+**입력**: DS-002 (ml_dataset_fp_focused) normal + crack_in_bending  
 **절차**: CLI `analyze-bundle` 또는 GUI 반복  
 **평가**: 정상/크랙 분류 ROC AUC, 처리 시간  
 **개선**: 배치 모드 GUI, 결과 요약 테이블/차트

@@ -37,7 +37,7 @@ python -m pip install -e ".[dev,build]"
 
 다음을 수행합니다:
 
-- 합성 데이터셋 생성 (`data\synthetic\examples\`)
+- 합성 데이터셋 확인 (DS-260223-ml-fp-20k-60f: `data\synthetic\ml_dataset_fp_focused\`)
 - GUI EXE 빌드 (`dist\motionanalyzer-gui.exe`)
 - CLI EXE 빌드 (`dist\motionanalyzer-cli.exe`)
 - 출력 디렉터리 생성 (`exports\`, `reports\`)
@@ -116,9 +116,9 @@ ML 버전:
 ### 3.2 CLI 개별 명령 테스트
 
 ```powershell
-# 1. 단일 분석
+# 1. 단일 분석 (DS-002)
 .\dist\motionanalyzer-cli.exe analyze-bundle `
-    --input-dir "data\synthetic\examples\normal" `
+    --input-dir "data\synthetic\ml_dataset_fp_focused\normal\normal_0001" `
     --output-dir "exports\vectors\exe_normal"
 
 # 2. 결과 비교
@@ -126,10 +126,10 @@ ML 버전:
     --base-summary "exports\vectors\exe_normal\summary.json" `
     --candidate-summary "exports\vectors\exe_crack\summary.json"
 
-# 3. FPCB 파이프라인
+# 3. FPCB 파이프라인 (generate -> analyze -> plot)
 .\dist\motionanalyzer-cli.exe run-fpcb-pipeline `
-    --data-dir "data\synthetic\fpcb_high_fidelity" `
-    --export-vectors-dir "exports\vectors\fpcb_high_fidelity" `
+    --data-dir "data\synthetic\fpcb_generated" `
+    --export-vectors-dir "exports\vectors\fpcb_generated" `
     --plots-dir "exports\plots"
 ```
 
@@ -156,7 +156,7 @@ ML 버전:
 
 ### 4.2 Analyze 탭 테스트
 
-1. **Input Dir**: `data\synthetic\examples\normal` (또는 Browse로 선택)
+1. **Input Dir**: `data\synthetic\ml_dataset_fp_focused\normal\normal_0001` (또는 Browse로 선택)
 2. **Output Dir**: `exports\vectors\gui_test`
 3. **FPS**: `30`
 4. **Run Analysis** 클릭

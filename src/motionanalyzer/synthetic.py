@@ -12,6 +12,9 @@ ScenarioName = Literal[
     "normal", "crack", "pre_damage", "thick_panel", "uv_overcured",
     "light_distortion",  # Normal + illumination-induced edge distortion
     "micro_crack",      # Subtle crack, harder to detect
+    "over_bending",     # Excessive bending trajectory anomaly
+    "under_bending",    # Insufficient bending trajectory anomaly
+    "jig_vibration",    # Bending jig micro-shake anomaly
 ]
 
 NoiseMode = Literal["gaussian", "outlier", "temporal_drift", "scale_jitter", "mixed"]
@@ -181,6 +184,54 @@ def _scenario_params(name: ScenarioName) -> ScenarioParams:
             vibration_frequency_hz=12.0,  # Lower
             vibration_damping=0.95,
             vibration_duration_frames=8,
+        ),
+        "over_bending": ScenarioParams(
+            final_angle_ratio=1.10,
+            response_alpha=0.17,
+            damping=0.94,
+            crack_gain=6.0,
+            crack_center_ratio=0.70,
+            crack_width_ratio=0.018,
+            uv_delay_ratio=0.0,
+            uv_snap_gain=0.0,
+            pre_damage_skew=0.03,
+            shockwave_amplitude=1.8,
+            shockwave_decay_rate=0.18,
+            vibration_frequency_hz=18.0,
+            vibration_damping=0.93,
+            vibration_duration_frames=10,
+        ),
+        "under_bending": ScenarioParams(
+            final_angle_ratio=0.62,
+            response_alpha=0.09,
+            damping=0.98,
+            crack_gain=2.5,
+            crack_center_ratio=0.66,
+            crack_width_ratio=0.03,
+            uv_delay_ratio=0.0,
+            uv_snap_gain=0.0,
+            pre_damage_skew=0.04,
+            shockwave_amplitude=0.9,
+            shockwave_decay_rate=0.22,
+            vibration_frequency_hz=10.0,
+            vibration_damping=0.95,
+            vibration_duration_frames=8,
+        ),
+        "jig_vibration": ScenarioParams(
+            final_angle_ratio=0.96,
+            response_alpha=0.15,
+            damping=0.95,
+            crack_gain=3.5,
+            crack_center_ratio=0.69,
+            crack_width_ratio=0.02,
+            uv_delay_ratio=0.0,
+            uv_snap_gain=0.0,
+            pre_damage_skew=0.05,
+            shockwave_amplitude=1.3,
+            shockwave_decay_rate=0.20,
+            vibration_frequency_hz=30.0,
+            vibration_damping=0.90,
+            vibration_duration_frames=18,
         ),
     }
     return table[name]
@@ -667,6 +718,27 @@ def validate_synthetic_bundle(output_dir: Path, scenario: ScenarioName) -> tuple
         checks.extend(
             [
                 (4.0 < conc[-1] < 8.0, f"micro_crack concentration out of range: {conc[-1]:.2f}"),
+            ]
+        )
+    elif scenario == "over_bending":
+        checks.extend(
+            [
+                (bend[-1] >= 170.0, f"over_bending final bend too small: {bend[-1]:.1f} deg"),
+                (conc[-1] >= 4.5, f"over_bending concentration too low: {conc[-1]:.2f}"),
+            ]
+        )
+    elif scenario == "under_bending":
+        checks.extend(
+            [
+                (bend[-1] <= 130.0, f"under_bending final bend too high: {bend[-1]:.1f} deg"),
+                (np.max(strain) <= 0.03, f"under_bending strain unexpectedly high: {np.max(strain):.4f}"),
+            ]
+        )
+    elif scenario == "jig_vibration":
+        checks.extend(
+            [
+                (np.max(np.abs(d2_bend)) >= 0.25, "jig_vibration temporal jitter not strong enough"),
+                (conc[-1] >= 3.5, f"jig_vibration concentration too low: {conc[-1]:.2f}"),
             ]
         )
 

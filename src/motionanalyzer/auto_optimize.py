@@ -390,12 +390,31 @@ def extract_features(
     return result
 
 
+def _extract_one_dataset(
+    path: Path,
+    label: int,
+    fps: float | None,
+    crack_params: CrackModelParams | None,
+    feature_config: FeatureExtractionConfig,
+) -> tuple[pd.DataFrame | None, list[int] | None]:
+    """Extract features from one dataset (for parallel workers). Returns (features_df, labels) or (None, None) on error."""
+    try:
+        dataset = load_dataset(path, label=label, fps=fps, crack_params=crack_params)
+        features = extract_features(dataset, feature_config)
+        labels = [label] * len(features)
+        return (features, labels)
+    except Exception as exc:
+        print(f"Warning: Failed to load dataset {path}: {exc}")
+        return (None, None)
+
+
 def prepare_training_data(
     normal_datasets: list[Path],
     crack_datasets: list[Path],
     fps: float | None = None,
     crack_params: CrackModelParams | None = None,
     feature_config: FeatureExtractionConfig | None = None,
+    n_jobs: int = 1,
 ) -> tuple[pd.DataFrame, np.ndarray]:
     """
     Prepare training data from normal and crack datasets.
@@ -406,6 +425,7 @@ def prepare_training_data(
         fps: FPS (if None, read from each dataset's fps.txt)
         crack_params: Crack model parameters
         feature_config: Feature extraction configuration
+        n_jobs: Number of parallel workers for feature extraction (1=sequential).
 
     Returns:
         (features_df, labels_array) where labels are 0 (normal) or 1 (crack)
@@ -413,30 +433,39 @@ def prepare_training_data(
     if feature_config is None:
         feature_config = FeatureExtractionConfig()
 
-    all_features = []
-    all_labels = []
+    tasks = [(p, 0, fps, crack_params, feature_config) for p in normal_datasets]
+    tasks += [(p, 1, fps, crack_params, feature_config) for p in crack_datasets]
 
-    # Load normal datasets
-    for normal_path in normal_datasets:
-        try:
-            dataset = load_dataset(normal_path, label=0, fps=fps, crack_params=crack_params)
-            features = extract_features(dataset, feature_config)
-            all_features.append(features)
-            all_labels.extend([0] * len(features))
-        except Exception as exc:
-            print(f"Warning: Failed to load normal dataset {normal_path}: {exc}")
-            continue
+    if n_jobs is None or n_jobs < 1:
+        n_jobs = 1
 
-    # Load crack datasets
-    for crack_path in crack_datasets:
+    all_features: list[pd.DataFrame] = []
+    all_labels: list[int] = []
+
+    if n_jobs == 1:
+        for path, label, f, cp, cfg in tasks:
+            feat, lab = _extract_one_dataset(path, label, f, cp, cfg)
+            if feat is not None and lab is not None:
+                all_features.append(feat)
+                all_labels.extend(lab)
+    else:
         try:
-            dataset = load_dataset(crack_path, label=1, fps=fps, crack_params=crack_params)
-            features = extract_features(dataset, feature_config)
-            all_features.append(features)
-            all_labels.extend([1] * len(features))
-        except Exception as exc:
-            print(f"Warning: Failed to load crack dataset {crack_path}: {exc}")
-            continue
+            from joblib import Parallel, delayed
+
+            results = Parallel(n_jobs=n_jobs, backend="loky", verbose=0)(
+                delayed(_extract_one_dataset)(path, label, f, cp, cfg)
+                for path, label, f, cp, cfg in tasks
+            )
+            for feat, lab in results:
+                if feat is not None and lab is not None:
+                    all_features.append(feat)
+                    all_labels.extend(lab)
+        except ImportError:
+            for path, label, f, cp, cfg in tasks:
+                feat, lab = _extract_one_dataset(path, label, f, cp, cfg)
+                if feat is not None and lab is not None:
+                    all_features.append(feat)
+                    all_labels.extend(lab)
 
     if not all_features:
         raise ValueError("No datasets loaded successfully")

@@ -108,8 +108,8 @@ def gen_synthetic(
 
 @app.command("run-fpcb-pipeline")
 def run_fpcb_pipeline(
-    data_dir: Path = Path("data/synthetic/fpcb_high_fidelity"),
-    export_vectors_dir: Path = Path("exports/vectors/fpcb_high_fidelity"),
+    data_dir: Path = Path("data/synthetic/fpcb_generated"),
+    export_vectors_dir: Path = Path("exports/vectors/fpcb_generated"),
     plots_dir: Path = Path("exports/plots"),
     frames: int = 180,
     points_per_frame: int = 280,

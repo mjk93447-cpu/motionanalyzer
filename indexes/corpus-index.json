@@ -2,6 +2,7 @@
   "version": "v1",
   "generated_by": "manual-bootstrap",
   "canonical_read_order": [
+    "docs/AGENT_HANDOFF_QUICK_START.md",
     "docs/INDEX.md",
     "docs/PROJECT_GOALS.md",
     "docs/DEVELOPMENT_ROADMAP_FINAL.md",
@@ -10,6 +11,42 @@
     "reports/crack_detection_analysis/analysis.json"
   ],
   "entries": [
+    {
+      "id": "agent-handoff",
+      "path": "docs/AGENT_HANDOFF_QUICK_START.md",
+      "kind": "doc",
+      "title": "Agent Handoff Quick Start",
+      "canonical": true,
+      "status": "active",
+      "tags": ["handoff", "agent", "entrypoint"]
+    },
+    {
+      "id": "agent-verification",
+      "path": "docs/AGENT_VERIFICATION_AND_CACHING.md",
+      "kind": "doc",
+      "title": "Agent Verification and Caching",
+      "canonical": true,
+      "status": "active",
+      "tags": ["verification", "caching", "agent"]
+    },
+    {
+      "id": "roadmap-scenarios",
+      "path": "docs/ROADMAP_SCENARIOS_AND_READINESS.md",
+      "kind": "doc",
+      "title": "Roadmap Scenarios and Readiness",
+      "canonical": true,
+      "status": "active",
+      "tags": ["scenarios", "roadmap", "readiness"]
+    },
+    {
+      "id": "agent-refinement",
+      "path": "docs/AGENT_REFINEMENT_LOOP.md",
+      "kind": "doc",
+      "title": "Agent Refinement Loop",
+      "canonical": true,
+      "status": "active",
+      "tags": ["refinement", "iterative", "evaluation"]
+    },
     {
       "id": "docs-index",
       "path": "docs/INDEX.md",

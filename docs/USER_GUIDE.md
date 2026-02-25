@@ -182,16 +182,18 @@ motionanalyzer analyze-bundle --input-dir data/synthetic/normal_case --output-di
 motionanalyzer compare-runs --base-summary exports/vectors/normal_case/summary.json --candidate-summary exports/vectors/crack_case/summary.json
 ```
 
-### 예제 데이터셋 사용
+### DS-002 데이터셋 사용
 
 ```powershell
-# 예제 데이터셋 생성
-python scripts/generate_example_datasets.py
-
-# 예제 데이터 분석
+# DS-002 (ml_dataset_fp_focused) 정상 시퀀스 분석
 motionanalyzer analyze-bundle `
-  --input-dir data/synthetic/examples/normal `
+  --input-dir data/synthetic/ml_dataset_fp_focused/normal/normal_0001 `
   --output-dir exports/vectors/example_normal
+
+# 크랙 시퀀스 분석
+motionanalyzer analyze-bundle `
+  --input-dir data/synthetic/ml_dataset_fp_focused/crack_in_bending/crack_0001 `
+  --output-dir exports/vectors/example_crack
 ```
 
 ---

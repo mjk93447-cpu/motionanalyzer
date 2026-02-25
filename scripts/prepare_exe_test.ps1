@@ -53,22 +53,18 @@ $null = New-Item -ItemType Directory -Force -Path "exports\vectors", "exports\pl
 Write-Host "      OK: exports\vectors, exports\plots, reports\compare"
 Write-Host ""
 
-# 2. Synthetic data
+# 2. Synthetic data (DS-260223-ml-fp-20k-60f)
 if (-not $SkipData) {
-    $examplesDir = "data\synthetic\examples\normal"
-    if (-not (Test-Path "$examplesDir\frame_00001.txt")) {
-        Write-Host "[2/4] Generating synthetic example datasets..."
-        & $resolvedPython scripts\generate_example_datasets.py
-        if ($LASTEXITCODE -ne 0) {
-            Write-Host "[ERROR] Failed to generate example datasets"
-            exit 1
-        }
-        Write-Host "      OK: data\synthetic\examples\ (normal, crack, pre_damage, thick_panel, uv_overcured)"
-    } else {
-        Write-Host "[2/4] Synthetic data already exists: data\synthetic\examples\"
+    $dsCheck = "data\synthetic\ml_dataset_fp_focused\normal\normal_0001"
+    if (-not (Test-Path "$dsCheck\frame_00001.txt")) {
+        Write-Host "[2/4] DS-260223-ml-fp-20k-60f (ml_dataset_fp_focused) not found."
+        Write-Host "      Generate with: python scripts/generate_ml_dataset.py --scale fp_focused --out data/synthetic/ml_dataset_fp_focused"
+        Write-Host "      Or use DS-260220-ml-100k-100k-60f: data\synthetic\ml_dataset_100k_v2"
+        exit 1
     }
+    Write-Host "[2/4] Synthetic data exists: data\synthetic\ml_dataset_fp_focused (DS-260223-ml-fp-20k-60f)"
 } else {
-    Write-Host "[2/4] Skipping data generation (-SkipData)"
+    Write-Host "[2/4] Skipping data check (-SkipData)"
 }
 Write-Host ""
 
