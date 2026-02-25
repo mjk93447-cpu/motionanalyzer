@@ -29,7 +29,9 @@ Param(
     [ValidateSet("backup","commit","branch","status")]
     [string]$Action,
     [string]$Message = "",
-    [string]$BranchName = ""
+    [string]$BranchName = "",
+    [switch]$SyncFirst,
+    [switch]$PushMain
 )
 
 $ErrorActionPreference = "Stop"
@@ -38,7 +40,7 @@ Set-Location $root
 
 switch ($Action) {
     "backup" {
-        & "$PSScriptRoot\git_backup.ps1" -Message $Message
+        & "$PSScriptRoot\git_backup.ps1" -Message $Message -SyncFirst:$SyncFirst -PushMain:$PushMain
     }
     "commit" {
         if (-not $Message) { Write-Host "[ERROR] -Message required for commit"; exit 1 }
