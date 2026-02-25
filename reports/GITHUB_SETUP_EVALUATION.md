@@ -1,7 +1,8 @@
 # GitHub 활용 세팅 평가 결과
 
 **평가일**: 2026-02-25  
-**평가 스크립트**: `scripts/evaluate_github_setup.ps1`
+**평가 스크립트**: `scripts/evaluate_github_setup.ps1`  
+**최종 점수**: 100/100
 
 ---
 

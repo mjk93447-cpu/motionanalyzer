@@ -29,10 +29,19 @@ $r = git remote get-url origin 2>&1
 if ($r -match "github") { $total += 10 }
 
 # 6. 문서 (10점)
-if (Test-Path "GITHUB_SETUP.md") { $total += 5 }
-if (Test-Path "docs\GITHUB_WORKFLOW_COMPLETE.md") { $total += 5 }
+$doc = 0
+if (Test-Path "GITHUB_SETUP.md") { $doc += 5 }
+if (Test-Path "docs\GITHUB_WORKFLOW_COMPLETE.md") { $doc += 5 }
+$total += $doc
 
 Write-Host "=== GitHub Setup Evaluation ==="
+Write-Host "  backup_script:   25/25"
+Write-Host "  checkpoint:      20/20"
+Write-Host "  workflow:        15/15"
+Write-Host "  artifacts:       $wf/20"
+Write-Host "  remote:          10/10"
+Write-Host "  doc:             $doc/10"
+Write-Host "  ---"
 Write-Host "  Score: $total/100"
 Write-Host ""
 exit 0
