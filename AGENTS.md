@@ -25,6 +25,7 @@ This repository is organized for fast AI-assisted development.
 - Dataset naming rule: `docs/DATASET_NAMING_RULE.md`
 - Dataset inventory: `reports/BENDING_DATASETS_INVENTORY.md`
 - Current report summary: `reports/crack_detection_analysis/insights.md`
+- **GitHub workflow**: `docs/GITHUB_WORKFLOW_COMPLETE.md`, `GITHUB_SETUP.md`, `scripts/git_backup.ps1`, `scripts/git_checkpoint.ps1`, `scripts/git_workflow.ps1`
 
 ## Archive Policy
 

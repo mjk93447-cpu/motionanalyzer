@@ -23,6 +23,7 @@
 1. **Loop 1**: 스크립트 생성, 경로 수정 ($root), 평가 100점
 2. **Loop 2**: backup 실행 시 stderr로 인한 PowerShell 오류 → ErrorActionPreference 조정
 3. **Loop 3**: Cursor rule에 GitHub 사용법 추가, GITHUB_SETUP.md 링크
+4. **Loop 4**: git_backup.ps1에 `-SyncFirst`, `-PushMain` 옵션 추가; AGENTS.md에 GitHub workflow 참조 추가
 
 ---
 

@@ -23,7 +23,14 @@
 ```powershell
 .\scripts\git_backup.ps1
 .\scripts\git_backup.ps1 -Message "WIP: dataset cleanup"
+.\scripts\git_backup.ps1 -SyncFirst -PushMain   # 원격 동기화 후 백업, 병합 후 main push
 ```
+
+| 옵션 | 설명 |
+|------|------|
+| `-Message "..."` | 커밋 메시지 |
+| `-SyncFirst` | 백업 전 `git pull --rebase origin main` |
+| `-PushMain` | 병합 후 `git push origin main` |
 
 ---
 

@@ -8,13 +8,22 @@
 .PARAMETER Message
     커밋 메시지 (기본: "backup: YYYY-MM-DD HH:mm")
 
+.PARAMETER SyncFirst
+    백업 전 origin/main에서 pull --rebase 수행 (원격 변경 반영)
+
+.PARAMETER PushMain
+    백업 병합 후 main을 origin에 push
+
 .EXAMPLE
     .\scripts\git_backup.ps1
     .\scripts\git_backup.ps1 -Message "WIP: dataset cleanup"
+    .\scripts\git_backup.ps1 -SyncFirst -PushMain
 #>
 
 Param(
-    [string]$Message = ""
+    [string]$Message = "",
+    [switch]$SyncFirst,
+    [switch]$PushMain
 )
 
 $ErrorActionPreference = "Continue"
@@ -24,6 +33,12 @@ Set-Location $root
 $timestamp = Get-Date -Format "yyyy-MM-dd-HHmm"
 $branchName = "backup/$timestamp"
 $commitMsg = if ($Message) { $Message } else { "backup: $timestamp" }
+
+# Optional: sync with remote before backup
+if ($SyncFirst) {
+    git fetch origin 2>&1 | Out-Null
+    git pull --rebase origin main 2>&1 | Out-Null
+}
 
 # Check for changes
 $status = git status --porcelain 2>&1
@@ -58,3 +73,9 @@ git merge $branchName -m "merge backup: $timestamp" --no-edit 2>&1
 if ($pushOk) { Write-Host "[OK] Backup pushed to origin/$branchName" }
 else { Write-Host "[WARN] Push failed. Backup is local: $branchName" }
 Write-Host "  Merged backup into $currentBranch"
+
+if ($PushMain) {
+    git push origin $currentBranch 2>&1 | Out-Null
+    if ($LASTEXITCODE -eq 0) { Write-Host "[OK] Pushed $currentBranch to origin" }
+    else { Write-Host "[WARN] Push $currentBranch failed" }
+}
