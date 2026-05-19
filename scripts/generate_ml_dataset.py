@@ -3,7 +3,7 @@ Generate ML training/evaluation synthetic dataset.
 
 Scale: configurable up to 100k with diversified anomaly scenarios.
 Tags: goal, label, scenario, crack_frame, split.
-Output: data/synthetic/ml_dataset/ + manifest.json.
+Output: data/synthetic/ml_{scale}_* (see docs/DATASET_FOLDER_STRUCTURE.md). manifest.json includes dataset_id, scale.
 
 Usage:
   python scripts/generate_ml_dataset.py
@@ -43,6 +43,23 @@ SCALE_CONFIGS: dict[str, tuple[int, ...]] = {
     "100k": (70000, 5000, 5000, 3000, 3000, 4000, 5000, 3000, 1000, 1000),  # 100,000
     # Normal 94%, Crack 6%: 실제 공정 반영, crack은 학습에 충분
     "fp_focused": (15000, 1000, 300, 300, 200, 150, 2800, 100, 100, 50),  # 20,000
+    # Hard 10k: 복잡성/경계 케이스 강화 — 공장 데이터 추가 시 변수·예측불가 현상 상정
+    "hard_10k": (6000, 1200, 350, 350, 450, 350, 100, 400, 250, 150),  # 10,000
+    # Asymmetric 10k: 3D 불균형 접힘 모방 — 좌우 비대칭 휘어짐으로 정사영이 복잡한 패턴
+    "asymmetric_10k": (6000, 1200, 350, 350, 450, 350, 100, 400, 250, 150),  # 10,000
+    # Balanced NG diversity for ~30min pretrain (7:2:1 split); crack ~7%
+    "pretrain_balanced": (2100, 140, 100, 70, 50, 40, 100, 30, 30, 20),  # ~3,030
+}
+# Canonical output dir by scale (docs/DATASET_FOLDER_STRUCTURE.md)
+DEFAULT_DATASET_DIRS: dict[str, str] = {
+    "default": "data/synthetic/ml_default_1k_60f",
+    "10k": "data/synthetic/ml_10k_60f",
+    "100k": "data/synthetic/ml_100k_60f",
+    "fp_focused": "data/synthetic/ml_fp_focused_20k_60f",
+    "hard_10k": "data/synthetic/ml_hard_10k_60f",
+    "asymmetric_10k": "data/synthetic/ml_asymmetric_10k_60f",
+    "pretrain_balanced": "data/synthetic/ml_pretrain_balanced_3k_60f",
+    "small": "data/synthetic/ml_small_60f",
 }
 NOISE_MODES: tuple[NoiseMode, ...] = ("gaussian", "outlier", "temporal_drift", "scale_jitter", "mixed")
 
@@ -63,6 +80,11 @@ def _randint(rng: np.random.Generator, low: int, high: int) -> int:
 def _noise_mode_for_seed(seed: int) -> NoiseMode:
     """Assign noise mode from seed for reproducible diversity."""
     return NOISE_MODES[seed % len(NOISE_MODES)]
+
+
+def _asymmetric_fold_strength(rng: np.random.Generator, scale: str) -> float:
+    """3D asymmetric fold strength when scale is asymmetric_10k; 0 otherwise."""
+    return float(rng.uniform(0.4, 0.9)) if scale == "asymmetric_10k" else 0.0
 
 
 def _assign_split(rng: np.random.Generator, n: int, split_ratios: tuple[float, float, float]) -> list[str]:
@@ -111,12 +133,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Generate ML synthetic dataset")
     parser.add_argument("--dry-run", action="store_true", help="Print plan only, do not generate")
     parser.add_argument("--small", action="store_true", help="Small set: 100 normal, 10 crack, 5 predam (quick test)")
-    parser.add_argument("--scale", choices=["default", "10k", "100k", "fp_focused"], default="default",
-                        help="Dataset scale: default, 10k, 100k, fp_focused (94%% normal, 6%% crack)")
+    parser.add_argument("--scale", choices=["default", "10k", "100k", "fp_focused", "hard_10k", "asymmetric_10k", "pretrain_balanced"], default="default",
+                        help="Dataset scale: default, 10k, 100k, fp_focused, hard_10k, asymmetric_10k, pretrain_balanced (~3k)")
     parser.add_argument("--workers", type=int, default=1,
                         help="Parallel workers for generation (default 1 = sequential)")
-    parser.add_argument("--output-dir", type=str, default="data/synthetic/ml_dataset",
-                        help="Output dataset directory")
+    parser.add_argument("--output-dir", type=str, default=None,
+                        help="Output dataset directory (default: by scale, see docs/DATASET_FOLDER_STRUCTURE.md)")
     parser.add_argument("--split-train", type=float, default=DEFAULT_SPLIT_RATIOS[0], help="Train split ratio")
     parser.add_argument("--split-val", type=float, default=DEFAULT_SPLIT_RATIOS[1], help="Validation split ratio")
     parser.add_argument("--split-test", type=float, default=DEFAULT_SPLIT_RATIOS[2], help="Test split ratio")
@@ -148,8 +170,13 @@ def main() -> None:
         ) = cfg
     n_crack = n_crack_main + n_uv  # crack_in_bending total
 
-    base_dir = (repo_root / Path(args.output_dir)).resolve()
+    output_dir = args.output_dir
+    if output_dir is None:
+        scale_key = "small" if args.small else args.scale
+        output_dir = DEFAULT_DATASET_DIRS.get(scale_key, "data/synthetic/ml_default_1k_60f") if not args.small else "data/synthetic/ml_small_60f"
+    base_dir = (repo_root / Path(output_dir)).resolve()
     rng = np.random.default_rng(seed=args.seed)
+    dataset_id = base_dir.name
 
     total = n_normal + n_light_dist + n_crack + n_micro_crack + n_predam + n_thick + n_overbend + n_underbend + n_jig
     print("=" * 60)
@@ -218,11 +245,13 @@ def main() -> None:
                 "goal": "normal", "scenario": "normal", "label": 0, "crack_frame": -1,
                 "split": normal_splits[i - 1], "dataset_id": vid_name, "noise_mode": noise_mode,
             }
+            asym = _asymmetric_fold_strength(np.random.default_rng(seed), args.scale)
             cfg = SyntheticConfig(
                 frames=FRAMES, points_per_frame=points, fps=FPS, width=1920, height=1080,
                 panel_length_px=panel_len, panel_thickness_um=90.0, pixels_per_mm=px_per_mm,
                 meters_per_pixel=1e-3 / px_per_mm, noise_std=noise, seed=seed,
                 scenario="normal", noise_mode=noise_mode,
+                asymmetric_fold_strength=asym,
             )
             from dataclasses import asdict
             tasks.append((str(out), asdict(cfg), extra))
@@ -279,6 +308,7 @@ def main() -> None:
                 seed=seed,
                 scenario="normal",
                 noise_mode=noise_mode,
+                asymmetric_fold_strength=_asymmetric_fold_strength(rng, args.scale),
             )
             generate_synthetic_bundle(out, config, extra_metadata=extra)
             manifest_entries.append({
@@ -331,6 +361,7 @@ def main() -> None:
             seed=seed,
             scenario="light_distortion",
             noise_mode=noise_mode,
+            asymmetric_fold_strength=_asymmetric_fold_strength(rng, args.scale),
         )
         generate_synthetic_bundle(out, config, extra_metadata=extra)
         manifest_entries.append({
@@ -393,6 +424,7 @@ def main() -> None:
             seed=seed,
             scenario=scenario,
             noise_mode=noise_mode,
+            asymmetric_fold_strength=_asymmetric_fold_strength(rng, args.scale),
         )
         generate_synthetic_bundle(out, config, extra_metadata=extra)
         manifest_entries.append({
@@ -447,6 +479,7 @@ def main() -> None:
             seed=seed,
             scenario="micro_crack",
             noise_mode=noise_mode,
+            asymmetric_fold_strength=_asymmetric_fold_strength(rng, args.scale),
         )
         generate_synthetic_bundle(out, config, extra_metadata=extra)
         manifest_entries.append({
@@ -502,6 +535,7 @@ def main() -> None:
             seed=seed,
             scenario="pre_damage",
             noise_mode=noise_mode,
+            asymmetric_fold_strength=_asymmetric_fold_strength(rng, args.scale),
         )
         generate_synthetic_bundle(out, config, extra_metadata=extra)
         manifest_entries.append({
@@ -557,6 +591,7 @@ def main() -> None:
             seed=seed,
             scenario="thick_panel",
             noise_mode=noise_mode,
+            asymmetric_fold_strength=_asymmetric_fold_strength(rng, args.scale),
         )
         generate_synthetic_bundle(out, config, extra_metadata=extra)
         manifest_entries.append({
@@ -603,6 +638,7 @@ def main() -> None:
             seed=seed,
             scenario="over_bending",
             noise_mode=noise_mode,
+            asymmetric_fold_strength=_asymmetric_fold_strength(rng, args.scale),
         )
         generate_synthetic_bundle(out, config, extra_metadata=extra)
         manifest_entries.append(
@@ -645,6 +681,7 @@ def main() -> None:
             seed=seed,
             scenario="under_bending",
             noise_mode=noise_mode,
+            asymmetric_fold_strength=_asymmetric_fold_strength(rng, args.scale),
         )
         generate_synthetic_bundle(out, config, extra_metadata=extra)
         manifest_entries.append(
@@ -687,6 +724,7 @@ def main() -> None:
             seed=seed,
             scenario="jig_vibration",
             noise_mode=noise_mode,
+            asymmetric_fold_strength=_asymmetric_fold_strength(rng, args.scale),
         )
         generate_synthetic_bundle(out, config, extra_metadata=extra)
         manifest_entries.append(
@@ -699,8 +737,11 @@ def main() -> None:
     train_count = sum(1 for e in manifest_entries if e["split"] == "train")
     val_count = sum(1 for e in manifest_entries if e["split"] == "val")
     test_count = sum(1 for e in manifest_entries if e["split"] == "test")
+    scale_used = "small" if args.small else args.scale
     manifest = {
         "version": "1.0",
+        "dataset_id": dataset_id,
+        "scale": scale_used,
         "created_at": datetime.now(UTC).isoformat(),
         "total_count": len(manifest_entries),
         "normal": n_normal,
