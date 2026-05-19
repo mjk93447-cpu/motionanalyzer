@@ -187,7 +187,7 @@ def main() -> None:
     print(f"  - {n_normal} normal (noise modes: {NOISE_MODES})")
     print(f"  - {n_light_dist} normal_light_distortion")
     print(f"  - {n_crack} crack_in_bending (Goal 1: {n_crack_main} crack + {n_uv} uv_overcured)")
-    print(f"  - {n_micro_crack} micro_crack (초미세 크랙)")
+    print(f"  - {n_micro_crack} micro_crack (micro-scale crack)")
     print(f"  - {n_predam} pre_damaged (Goal 2)")
     print(f"  - {n_thick} thick_panel (variant)")
     print(f"  - {n_overbend} over_bending (trajectory anomaly)")
