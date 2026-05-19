@@ -39,7 +39,7 @@
 
 1. GitHub Releases에서 EXE 파일 다운로드
    - `motionanalyzer-gui.exe`: 경량 버전 (ML 기능 없음)
-   - `motionanalyzer-gui-ml.exe`: ML 포함 버전 (DREAM/PatchCore 사용 가능)
+   - `motionanalyzer-gui-ml.exe`: ML 포함 버전 (DRAEM/PatchCore 사용 가능)
 
 2. EXE 파일을 원하는 위치에 저장
 
@@ -95,11 +95,12 @@ motionanalyzer gui
 2. "Output directory"에서 결과 저장 위치 지정
 3. "Analysis mode" 선택:
    - **Physics**: 물리 기반 분석 (기본)
-   - **DREAM**: DREAM 모델 사용 (ML 포함 버전만)
+   - **DRAEM**: DRAEM 모델 사용 (ML 포함 버전만)
    - **PatchCore**: PatchCore 모델 사용 (ML 포함 버전만)
    - **Ensemble**: 앙상블 모델 사용 (ML 포함 버전만)
    - **Temporal**: Temporal 모델 사용 (ML 포함 버전만)
-4. "Run Analysis" 버튼 클릭
+4. (선택) **Scale (mm/px)** 로 SI 단위 물리량 사용
+5. ML 모드 사용 시 상단 **모델 상태**에서 `bundle_manifest.json` 확인 후 **Run Analysis** (백그라운드 스레드)
 
 **결과 파일**:
 - `vectors.csv`: 프레임별 벡터 데이터
@@ -107,7 +108,19 @@ motionanalyzer gui
 - `summary.json`: 요약 통계
 - `vector_map.png`: 벡터 시각화
 
-#### 2. Compare 탭
+#### 2. Data 탭
+
+**기능**: 실데이터 inbox 스캔, preflight, ingest/manifest 스크립트 실행, Analyze로 번들 열기
+
+**사용 방법**:
+1. Inbox root (`data/raw` 기본) 설정 후 **Scan bundles**
+2. 번들 선택 → **Preflight selected** 또는 **Open in Analyze**
+3. flat TXT는 **Run ingest script…** → `scripts/ingest_edge_points.py`
+4. **Build manifest…** → `data/real/ml_<name>/manifest.json` (ML 탭에서 경로 지정)
+
+자세한 규약: [REALDATA_EDGE_INGESTION.md](REALDATA_EDGE_INGESTION.md)
+
+#### 3. Compare 탭
 
 **기능**: 두 분석 결과 비교
 
@@ -118,7 +131,7 @@ motionanalyzer gui
 
 **결과**: 두 데이터셋 간의 차이점 표시
 
-#### 3. Crack Model Tuning 탭
+#### 4. Crack Model Tuning 탭
 
 **기능**: 크랙 탐지 모델 파라미터 조정
 
@@ -127,7 +140,7 @@ motionanalyzer gui
 2. "Save Parameters" 버튼으로 저장
 3. Analyze 탭에서 Physics 모드로 분석 시 저장된 파라미터 사용
 
-#### 4. ML & Optimization 탭
+#### 5. ML & Optimization 탭
 
 **기능**: ML 모델 학습 및 최적화
 
@@ -185,14 +198,14 @@ motionanalyzer compare-runs --base-summary exports/vectors/normal_case/summary.j
 ### DS-002 데이터셋 사용
 
 ```powershell
-# DS-002 (ml_dataset_fp_focused) 정상 시퀀스 분석
+# DS-002 (ml_fp_focused_20k_60f) 정상 시퀀스 분석
 motionanalyzer analyze-bundle `
-  --input-dir data/synthetic/ml_dataset_fp_focused/normal/normal_0001 `
+  --input-dir data/synthetic/ml_fp_focused_20k_60f/normal/normal_0001 `
   --output-dir exports/vectors/example_normal
 
 # 크랙 시퀀스 분석
 motionanalyzer analyze-bundle `
-  --input-dir data/synthetic/ml_dataset_fp_focused/crack_in_bending/crack_0001 `
+  --input-dir data/synthetic/ml_fp_focused_20k_60f/crack_in_bending/crack_0001 `
   --output-dir exports/vectors/example_crack
 ```
 

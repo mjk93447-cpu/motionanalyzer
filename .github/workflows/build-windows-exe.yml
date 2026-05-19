@@ -2,6 +2,12 @@ name: build-windows-exe
 
 on:
   workflow_dispatch:
+    inputs:
+      full_train:
+        description: "Long fp_focused train (slow; default uses balanced pretrain)"
+        required: false
+        default: "false"
+        type: boolean
   push:
     branches:
       - main
@@ -9,43 +15,127 @@ on:
       - "v*"
 
 jobs:
-  build-exe:
+  test:
     runs-on: windows-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: Install package and build tools
+      - name: Install package
         shell: powershell
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev,build]"
+          python -m pip install -e ".[dev]"
+      - name: pytest
+        shell: powershell
+        run: python -m pytest -q --tb=short
 
-      - name: Run offline-safe tests (synthetic only)
+  train-models:
+    runs-on: windows-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ML dependencies
         shell: powershell
         run: |
-          python -m pytest -v --tb=short
-
-      - name: Build Windows offline GUI exe (lightweight)
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[ml,dev]"
+      - name: Train balanced pretrain (7:2:1, P~0.9 R~0.7)
+        if: github.event_name != 'workflow_dispatch' || inputs.full_train != true
+        shell: powershell
+        run: python scripts/train_balanced_pretrain.py --generate
+      - name: Train fp_focused (optional dispatch)
+        if: github.event_name == 'workflow_dispatch' && inputs.full_train == true
+        shell: powershell
+        run: python scripts/train_release_bundle.py --base-dir data/synthetic/ml_fp_focused_20k_60f --generate-dataset
+      - name: Benchmark gate
         shell: powershell
         run: |
-          .\scripts\build_exe.ps1 -PythonExe "python"
+          python scripts/benchmark_ml_models.py --models-dir release/models --manifest data/synthetic/ml_pretrain_balanced_3k_60f/manifest.json
+      - name: Upload pretrained models
+        uses: actions/upload-artifact@v4
+        with:
+          name: motionanalyzer-pretrained-models
+          path: |
+            release/models/
+            release/TURNKEY_BUNDLE.json
+            reports/balanced_pretrain_metrics.json
+          retention-days: 90
 
-      - name: Build Windows offline GUI exe (ML-enabled)
+  build-exe:
+    runs-on: windows-latest
+    needs: train-models
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Download pretrained models
+        uses: actions/download-artifact@v4
+        with:
+          name: motionanalyzer-pretrained-models
+          path: .
+      - name: Install and build ML EXE with bundled models
         shell: powershell
         run: |
-          python -m pip install -e ".[ml]"
-          .\scripts\build_exe.ps1 -PythonExe "python" -IncludeML
-
-      - name: Upload Windows GUI exe artifacts
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[ml,dev,build]"
+          .\scripts\build_exe.ps1 -PythonExe "python" -IncludeML -BundleModels
+      - name: Verify turnkey setup
+        shell: powershell
+        run: .\scripts\verify_turnkey_setup.ps1 -ModelsDir release\models
+      - name: Package turnkey zip (EXE + models + docs)
+        shell: powershell
+        run: |
+          $out = "dist/turnkey"
+          New-Item -ItemType Directory -Force -Path $out/models | Out-Null
+          Copy-Item -Force dist/motionanalyzer-gui-ml.exe $out/
+          Copy-Item -Force release/models/* $out/models/
+          Copy-Item -Force docs/INSTALL_TURNKEY.md $out/
+          Copy-Item -Force docs/INTERNAL_DEPLOYMENT_WORKFLOW.md $out/
+          Copy-Item -Force docs/PATCHCORE_REALDATA_FINETUNE.md $out/
+          Copy-Item -Force release/TURNKEY_BUNDLE.json $out/
+          Compress-Archive -Path "$out/*" -DestinationPath dist/motionanalyzer-turnkey.zip -Force
+      - name: Export models zip
+        shell: powershell
+        run: .\scripts\export_release_model_bundle.ps1 -SourceDir release\models
+      - name: Upload turnkey zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: motionanalyzer-turnkey
+          path: dist/motionanalyzer-turnkey.zip
+          retention-days: 90
+      - name: Upload Windows GUI artifacts
         uses: actions/upload-artifact@v4
         with:
           name: motionanalyzer-windows-exe
-          path: dist/
+          path: |
+            dist/motionanalyzer-gui-ml.exe
+            dist/motionanalyzer-models.zip
+            release/models/
           retention-days: 30
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-latest
+    needs: build-exe
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: motionanalyzer-windows-exe
+          path: dist-release
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist-release/dist/motionanalyzer-gui-ml.exe
+            dist-release/dist/motionanalyzer-turnkey.zip
+            dist-release/release/models/*
+          generate_release_notes: true

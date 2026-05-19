@@ -1,0 +1,442 @@
+{
+  "version": 1,
+  "created_at": "2026-05-19T06:20:55.748544+00:00",
+  "training_dataset_id": "ml_pretrain_balanced_3k_60f",
+  "feature_config": {
+    "include_per_frame": true,
+    "include_per_point": false,
+    "include_global_stats": true,
+    "window_size": null,
+    "feature_columns": null,
+    "include_crack_risk_features": false,
+    "include_advanced_stats": true,
+    "include_frequency_domain": true
+  },
+  "feature_cols": [
+    "strain_surrogate_mean",
+    "strain_surrogate_max",
+    "strain_surrogate_std",
+    "stress_surrogate_mean",
+    "stress_surrogate_max",
+    "stress_surrogate_std",
+    "impact_surrogate_mean",
+    "impact_surrogate_max",
+    "impact_surrogate_std",
+    "curvature_like_mean",
+    "curvature_like_max",
+    "curvature_like_std",
+    "acceleration_mean",
+    "acceleration_max",
+    "acceleration_std",
+    "speed_mean",
+    "speed_max",
+    "speed_std",
+    "bend_angle_deg",
+    "curvature_concentration",
+    "est_max_strain",
+    "acceleration_mean_skewness",
+    "acceleration_mean_kurtosis",
+    "acceleration_mean_autocorr_lag1",
+    "acceleration_mean_autocorr_lag2",
+    "curvature_like_mean_skewness",
+    "curvature_like_mean_kurtosis",
+    "curvature_like_mean_autocorr_lag1",
+    "curvature_like_mean_autocorr_lag2",
+    "strain_surrogate_mean_skewness",
+    "strain_surrogate_mean_kurtosis",
+    "strain_surrogate_mean_autocorr_lag1",
+    "strain_surrogate_mean_autocorr_lag2",
+    "strain_surrogate_mean_change_rate",
+    "strain_surrogate_mean_change_rate_abs",
+    "strain_surrogate_mean_change_accel",
+    "strain_surrogate_max_change_rate",
+    "strain_surrogate_max_change_rate_abs",
+    "strain_surrogate_max_change_accel",
+    "stress_surrogate_mean_change_rate",
+    "stress_surrogate_mean_change_rate_abs",
+    "stress_surrogate_mean_change_accel",
+    "stress_surrogate_max_change_rate",
+    "stress_surrogate_max_change_rate_abs",
+    "stress_surrogate_max_change_accel",
+    "impact_surrogate_mean_change_rate",
+    "impact_surrogate_mean_change_rate_abs",
+    "impact_surrogate_mean_change_accel",
+    "impact_surrogate_max_change_rate",
+    "impact_surrogate_max_change_rate_abs",
+    "impact_surrogate_max_change_accel",
+    "curvature_like_mean_change_rate",
+    "curvature_like_mean_change_rate_abs",
+    "curvature_like_mean_change_accel",
+    "curvature_like_max_change_rate",
+    "curvature_like_max_change_rate_abs",
+    "curvature_like_max_change_accel",
+    "acceleration_mean_change_rate",
+    "acceleration_mean_change_rate_abs",
+    "acceleration_mean_change_accel",
+    "acceleration_max_change_rate",
+    "acceleration_max_change_rate_abs",
+    "acceleration_max_change_accel",
+    "speed_mean_change_rate",
+    "speed_mean_change_rate_abs",
+    "speed_mean_change_accel",
+    "speed_max_change_rate",
+    "speed_max_change_rate_abs",
+    "speed_max_change_accel",
+    "acceleration_mean_dominant_frequency",
+    "acceleration_mean_spectral_power",
+    "acceleration_mean_spectral_entropy",
+    "curvature_like_mean_dominant_frequency",
+    "curvature_like_mean_spectral_power",
+    "curvature_like_mean_spectral_entropy",
+    "n_frames",
+    "n_points",
+    "mean_strain",
+    "max_strain",
+    "mean_acceleration",
+    "max_acceleration"
+  ],
+  "norm_stats": {
+    "strain_surrogate_mean": {
+      "mean": 0.00021805547285476013,
+      "std": 0.0004615626353630998
+    },
+    "strain_surrogate_max": {
+      "mean": 0.00240739328125,
+      "std": 0.0020133941380333616
+    },
+    "strain_surrogate_std": {
+      "mean": 0.00040247279059793344,
+      "std": 0.00037088856620924924
+    },
+    "stress_surrogate_mean": {
+      "mean": 0.00021805547285476013,
+      "std": 0.0004615626353630998
+    },
+    "stress_surrogate_max": {
+      "mean": 0.00240739328125,
+      "std": 0.0020133941380333616
+    },
+    "stress_surrogate_std": {
+      "mean": 0.00040247279059793344,
+      "std": 0.00037088856620924924
+    },
+    "impact_surrogate_mean": {
+      "mean": 48.73299358313275,
+      "std": 24.670860321943138
+    },
+    "impact_surrogate_max": {
+      "mean": 134.86558024588723,
+      "std": 51.23511477118494
+    },
+    "impact_surrogate_std": {
+      "mean": 25.139536849116375,
+      "std": 5.84188825804146
+    },
+    "curvature_like_mean": {
+      "mean": 3282020.677319504,
+      "std": 2725586.65025398
+    },
+    "curvature_like_max": {
+      "mean": 59409027.41128382,
+      "std": 31728751.079228982
+    },
+    "curvature_like_std": {
+      "mean": 10015362.362226196,
+      "std": 5686977.646249301
+    },
+    "acceleration_mean": {
+      "mean": 1461.9898074939824,
+      "std": 740.1258096582942
+    },
+    "acceleration_max": {
+      "mean": 4045.9674073766155,
+      "std": 1537.053443135548
+    },
+    "acceleration_std": {
+      "mean": 754.1861054734912,
+      "std": 175.25664774124382
+    },
+    "speed_mean": {
+      "mean": 66.15641214493961,
+      "std": 27.46299881813675
+    },
+    "speed_max": {
+      "mean": 185.8316026395878,
+      "std": 71.3523782020147
+    },
+    "speed_std": {
+      "mean": 46.44451870389727,
+      "std": 19.513714992922598
+    },
+    "bend_angle_deg": {
+      "mean": 69.63077,
+      "std": 57.05254720135863
+    },
+    "curvature_concentration": {
+      "mean": 1.0,
+      "std": 1.0
+    },
+    "est_max_strain": {
+      "mean": 0.0024074099479166667,
+      "std": 0.0020133742128164885
+    },
+    "acceleration_mean_skewness": {
+      "mean": -2.067576255119655,
+      "std": 2.5627151178727035
+    },
+    "acceleration_mean_kurtosis": {
+      "mean": 13.340432716264235,
+      "std": 13.25608027265027
+    },
+    "acceleration_mean_autocorr_lag1": {
+      "mean": 0.59315987243783,
+      "std": 0.1696811693918616
+    },
+    "acceleration_mean_autocorr_lag2": {
+      "mean": 0.06561036975573999,
+      "std": 0.2100801764017971
+    },
+    "curvature_like_mean_skewness": {
+      "mean": 1.1445313815619789,
+      "std": 0.6172181675666247
+    },
+    "curvature_like_mean_kurtosis": {
+      "mean": 2.017125670672701,
+      "std": 2.4773623601397223
+    },
+    "curvature_like_mean_autocorr_lag1": {
+      "mean": 0.14489365202561966,
+      "std": 0.3242892757015277
+    },
+    "curvature_like_mean_autocorr_lag2": {
+      "mean": 0.19924525612918592,
+      "std": 0.18085135176463546
+    },
+    "strain_surrogate_mean_skewness": {
+      "mean": 1.7705600554603067,
+      "std": 0.9556332377445355
+    },
+    "strain_surrogate_mean_kurtosis": {
+      "mean": 3.856310019923867,
+      "std": 5.926585321328424
+    },
+    "strain_surrogate_mean_autocorr_lag1": {
+      "mean": 0.5566929854903596,
+      "std": 0.2816077671701297
+    },
+    "strain_surrogate_mean_autocorr_lag2": {
+      "mean": 0.5784433195668406,
+      "std": 0.28358354340387043
+    },
+    "strain_surrogate_mean_change_rate": {
+      "mean": 9.986485211235378e-06,
+      "std": 0.00048793527531453695
+    },
+    "strain_surrogate_mean_change_rate_abs": {
+      "mean": 0.00018494241031328902,
+      "std": 0.0004516360164003206
+    },
+    "strain_surrogate_mean_change_accel": {
+      "mean": -2.0362278420967677e-06,
+      "std": 0.0008288189239715629
+    },
+    "strain_surrogate_max_change_rate": {
+      "mean": 9.603369791666667e-05,
+      "std": 4.867415594355957e-05
+    },
+    "strain_surrogate_max_change_rate_abs": {
+      "mean": 9.603369791666667e-05,
+      "std": 4.867415594355957e-05
+    },
+    "strain_surrogate_max_change_accel": {
+      "mean": 9.764583333333335e-07,
+      "std": 4.380214424956576e-06
+    },
+    "stress_surrogate_mean_change_rate": {
+      "mean": 9.986485211235378e-06,
+      "std": 0.00048793527531453695
+    },
+    "stress_surrogate_mean_change_rate_abs": {
+      "mean": 0.00018494241031328902,
+      "std": 0.0004516360164003206
+    },
+    "stress_surrogate_mean_change_accel": {
+      "mean": -2.0362278420967677e-06,
+      "std": 0.0008288189239715629
+    },
+    "stress_surrogate_max_change_rate": {
+      "mean": 9.603369791666667e-05,
+      "std": 4.867415594355957e-05
+    },
+    "stress_surrogate_max_change_rate_abs": {
+      "mean": 9.603369791666667e-05,
+      "std": 4.867415594355957e-05
+    },
+    "stress_surrogate_max_change_accel": {
+      "mean": 9.764583333333335e-07,
+      "std": 4.380214424956576e-06
+    },
+    "impact_surrogate_mean_change_rate": {
+      "mean": 0.928267441182694,
+      "std": 17.091631174210974
+    },
+    "impact_surrogate_mean_change_rate_abs": {
+      "mean": 9.813563166724458,
+      "std": 14.024070140011027
+    },
+    "impact_surrogate_mean_change_accel": {
+      "mean": -0.42778078384856655,
+      "std": 24.835365200982253
+    },
+    "impact_surrogate_max_change_rate": {
+      "mean": 2.3757515564438596,
+      "std": 36.60224835634676
+    },
+    "impact_surrogate_max_change_rate_abs": {
+      "mean": 26.322350209018552,
+      "std": 25.543430955893783
+    },
+    "impact_surrogate_max_change_accel": {
+      "mean": -1.309031813023892,
+      "std": 56.208453427468015
+    },
+    "curvature_like_mean_change_rate": {
+      "mean": 73184.9050881088,
+      "std": 3869215.844419405
+    },
+    "curvature_like_mean_change_rate_abs": {
+      "mean": 2389161.161752558,
+      "std": 3044306.027864533
+    },
+    "curvature_like_mean_change_accel": {
+      "mean": 10817.856868783341,
+      "std": 6828115.452746228
+    },
+    "curvature_like_max_change_rate": {
+      "mean": 1184708.0776715414,
+      "std": 43484055.629546665
+    },
+    "curvature_like_max_change_rate_abs": {
+      "mean": 28754375.99544769,
+      "std": 32640611.14563165
+    },
+    "curvature_like_max_change_accel": {
+      "mean": 139447.10294187046,
+      "std": 76814201.78034274
+    },
+    "acceleration_mean_change_rate": {
+      "mean": 27.848023235480827,
+      "std": 512.7489352263293
+    },
+    "acceleration_mean_change_rate_abs": {
+      "mean": 294.40689500173386,
+      "std": 420.7221042003308
+    },
+    "acceleration_mean_change_accel": {
+      "mean": -12.833423515456996,
+      "std": 745.0609560294675
+    },
+    "acceleration_max_change_rate": {
+      "mean": 71.27254669331579,
+      "std": 1098.067450690403
+    },
+    "acceleration_max_change_rate_abs": {
+      "mean": 789.6705062705565,
+      "std": 766.3029286768135
+    },
+    "acceleration_max_change_accel": {
+      "mean": -39.27095439071676,
+      "std": 1686.2536028240404
+    },
+    "speed_mean_change_rate": {
+      "mean": 0.799304758699678,
+      "std": 17.952000330403997
+    },
+    "speed_mean_change_rate_abs": {
+      "mean": 10.471454863806274,
+      "std": 14.603292743979633
+    },
+    "speed_mean_change_accel": {
+      "mean": -0.4944076035107588,
+      "std": 31.4190762894929
+    },
+    "speed_max_change_rate": {
+      "mean": 2.073990148182444,
+      "std": 33.80944632953542
+    },
+    "speed_max_change_rate_abs": {
+      "mean": 23.043059613001812,
+      "std": 24.82680138835592
+    },
+    "speed_max_change_accel": {
+      "mean": -1.4247829906724847,
+      "std": 57.24597420704035
+    },
+    "acceleration_mean_dominant_frequency": {
+      "mean": 2.3453125,
+      "std": 1.971403166680049
+    },
+    "acceleration_mean_spectral_power": {
+      "mean": 542276755.2121003,
+      "std": 728892151.5803605
+    },
+    "acceleration_mean_spectral_entropy": {
+      "mean": 4.254207822121465,
+      "std": 0.2821105163904659
+    },
+    "curvature_like_mean_dominant_frequency": {
+      "mean": 5.571875,
+      "std": 5.846985511335672
+    },
+    "curvature_like_mean_spectral_power": {
+      "mean": 1.3414028676884194e+16,
+      "std": 1.1756030114667574e+16
+    },
+    "curvature_like_mean_spectral_entropy": {
+      "mean": 4.151595516211033,
+      "std": 0.20861662992229227
+    },
+    "n_frames": {
+      "mean": 60.0,
+      "std": 1.0
+    },
+    "n_points": {
+      "mean": 230.303125,
+      "std": 17.098790666049435
+    },
+    "mean_strain": {
+      "mean": 0.00021805547285476016,
+      "std": 0.00016706265188910682
+    },
+    "max_strain": {
+      "mean": 0.005762021875,
+      "std": 0.0007481415361685742
+    },
+    "mean_acceleration": {
+      "mean": 1461.9898074939824,
+      "std": 498.2350203998555
+    },
+    "max_acceleration": {
+      "mean": 6382.339337793803,
+      "std": 1776.1819012864203
+    }
+  },
+  "exclude_cols": [
+    "label",
+    "dataset_path",
+    "frame",
+    "index",
+    "x",
+    "y"
+  ],
+  "aggregation": "dataset_max",
+  "draem_threshold": 462.98736572265625,
+  "patchcore_threshold": 155.9754180908203,
+  "ensemble_strategy": "both_agree",
+  "draem_model": "draem_model.pt",
+  "patchcore_model": "patchcore_model.npz",
+  "patchcore_n_bank_samples": 900,
+  "patchcore_training_sources": [
+    "scratch"
+  ]
+}

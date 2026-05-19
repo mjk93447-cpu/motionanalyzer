@@ -42,7 +42,7 @@
 
 ### 3. ML 기반 이상 감지 모델
 
-#### DREAM (DRAEM 전략)
+#### DRAEM (DRAEM 전략)
 - **전략**: Deep Reconstruction Error-based Anomaly Model
 - **성능**: ROC AUC 0.913, PR AUC 0.953 (baseline features)
 - **특징**: 정상 데이터만으로 학습, reconstruction error 기반 이상 점수
@@ -53,7 +53,7 @@
 - **특징**: Coreset 기반 효율적인 메모리 사용
 
 #### Ensemble 모델
-- **전략**: DREAM + PatchCore 결합
+- **전략**: DRAEM + PatchCore 결합
 - **방법**: 가중 평균, 최대값, 스태킹
 - **현재 성능**: ROC AUC 0.908 (단일 모델 대비 향상 필요)
 
@@ -92,7 +92,7 @@
 
 1. **GitHub Releases에서 다운로드**:
    - `motionanalyzer-gui.exe`: 경량 버전 (ML 기능 없음, ~50-100MB)
-   - `motionanalyzer-gui-ml.exe`: ML 포함 버전 (DREAM/PatchCore 사용 가능, ~200-500MB)
+   - `motionanalyzer-gui-ml.exe`: ML 포함 버전 (DRAEM/PatchCore 사용 가능, ~200-500MB)
 
 2. **실행**: EXE 파일을 더블클릭하여 실행
 
@@ -132,14 +132,14 @@ motionanalyzer gui
 #### DS-002 데이터셋으로 시작하기
 
 ```powershell
-# DS-002 (ml_dataset_fp_focused) 정상 시퀀스 분석
+# DS-002 (ml_fp_focused_20k_60f) 정상 시퀀스 분석
 motionanalyzer analyze-bundle `
-  --input-dir data/synthetic/ml_dataset_fp_focused/normal/normal_0001 `
+  --input-dir data/synthetic/ml_fp_focused_20k_60f/normal/normal_0001 `
   --output-dir exports/vectors/example_normal
 
 # 크랙 시퀀스 분석
 motionanalyzer analyze-bundle `
-  --input-dir data/synthetic/ml_dataset_fp_focused/crack_in_bending/crack_0001 `
+  --input-dir data/synthetic/ml_fp_focused_20k_60f/crack_in_bending/crack_0001 `
   --output-dir exports/vectors/example_crack
 ```
 
@@ -173,7 +173,7 @@ motionanalyzer compare-runs `
 
 #### 1. Analyze 탭
 - **기능**: 데이터셋 분석 및 벡터 계산
-- **분석 모드**: Physics, DREAM, PatchCore, Ensemble, Temporal
+- **분석 모드**: Physics, DRAEM, PatchCore, Ensemble, Temporal
 - **출력**: `vectors.csv`, `summary.json`, `vector_map.png`
 
 #### 2. Compare 탭
@@ -187,7 +187,7 @@ motionanalyzer compare-runs `
 
 #### 4. ML & Optimization 탭
 - **기능**: ML 모델 학습 및 최적화
-- **모델 타입**: DREAM, PatchCore, Ensemble, Temporal
+- **모델 타입**: DRAEM, PatchCore, Ensemble, Temporal
 - **저장 위치**: `%APPDATA%/motionanalyzer/models/`
 
 #### 5. Time Series Analysis 탭
@@ -267,10 +267,10 @@ motionanalyzer/
 │   ├── desktop_gui.py           # GUI 애플리케이션
 │   ├── cli.py                   # CLI 인터페이스
 │   ├── ml_models/               # ML 모델들
-│   │   ├── dream.py             # DREAM 모델
+│   │   ├── draem.py             # DRAEM 모델
 │   │   ├── patchcore.py         # PatchCore 모델
 │   │   ├── hybrid.py            # Ensemble 모델
-│   │   └── dream_temporal.py    # Temporal 모델
+│   │   └── draem_temporal.py    # Temporal 모델
 │   ├── time_series/             # 시계열 분석
 │   │   ├── changepoint.py       # CPD 알고리즘
 │   │   └── changepoint_optimizer.py  # CPD 최적화
@@ -316,11 +316,11 @@ motionanalyzer/
 
 | 모델 | ROC AUC | PR AUC | 상태 |
 |------|---------|--------|------|
-| DREAM (baseline) | 0.913 | 0.953 | ✅ 양호 |
+| DRAEM (baseline) | 0.913 | 0.953 | ✅ 양호 |
 | PatchCore (baseline) | 0.908 | 0.954 | ✅ 양호 |
 | Ensemble | 0.908 | 0.954 | ⚠️ 개선 필요 |
 | Temporal | 0.100 | 0.286 | ❌ 개선 필요 |
-| DREAM+Advanced | 1.000 | 1.000 | ⚠️ 과적합 의심 |
+| DRAEM+Advanced | 1.000 | 1.000 | ⚠️ 과적합 의심 |
 
 **참고**: 모든 벤치마크는 합성 데이터 기반입니다. 실제 데이터에서의 성능 검증이 필요합니다.
 
@@ -366,7 +366,7 @@ motionanalyzer/
 
 **과적합 위험**:
 - 고급 특징이 합성 데이터 패턴에 과적합 가능성 높음
-- DREAM+Advanced가 ROC AUC 1.000 (합성 데이터에서만)
+- DRAEM+Advanced가 ROC AUC 1.000 (합성 데이터에서만)
 - 실제 데이터에서 성능 저하 가능
 
 **대응 방안**:
@@ -459,7 +459,7 @@ motionanalyzer/
 pytest
 
 # 특정 테스트 파일
-pytest tests/test_dream_draem.py -v
+pytest tests/test_draem.py -v
 
 # 커버리지 포함
 pytest --cov=src/motionanalyzer --cov-report=html
@@ -472,7 +472,7 @@ pytest --cov=src/motionanalyzer --cov-report=html
   - 벡터 분석 (`test_analysis.py`)
   - 합성 데이터 (`test_synthetic.py`)
   - Change Point Detection (`test_changepoint.py`)
-  - ML 모델들 (`test_dream_draem.py`, `test_patchcore.py`)
+  - ML 모델들 (`test_draem.py`, `test_patchcore.py`)
   - 고급 특징 (`test_advanced_features.py`)
   - 정규화 (`test_normalize_features.py`)
 

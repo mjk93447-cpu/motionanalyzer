@@ -1,7 +1,7 @@
 """
-DREAM (DRAEM strategy) for FPCB bending copper-wire crack detection.
+DRAEM for FPCB bending copper-wire crack detection.
 
-DREAM follows the strategy of:
+Implements the strategy of:
   Zavrtanik, V., Kristan, M., & Skočaj, D. (2021). DRAEM - A Discriminatively
   Trained Reconstruction Embedding for Surface Anomaly Detection. ICCV 2021, 8330-8339.
   arXiv:2108.07610. Code: https://github.com/VitjanZ/DRAEM
@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 
 
-class DREAMAnomalyDetector(ABC):
+class DRAEMAnomalyDetector(ABC):
     """
     Deep Reconstruction Error-based Anomaly Model for FPCB crack detection.
 
@@ -37,7 +37,7 @@ class DREAMAnomalyDetector(ABC):
         learning_rate: float = 1e-3,
     ) -> None:
         """
-        Initialize DREAM model.
+        Initialize DRAEM model.
 
         Args:
             input_dim: Input feature dimension (e.g., from vectors.csv columns)
@@ -172,9 +172,9 @@ class DREAMAnomalyDetector(ABC):
         return best_threshold, best_metrics
 
 
-class DREAMPyTorch(DREAMAnomalyDetector):
+class DRAEMPyTorch(DRAEMAnomalyDetector):
     """
-    DREAM with DRAEM strategy: reconstructive AE + discriminative head.
+    DRAEM with DRAEM strategy: reconstructive AE + discriminative head.
 
     - Reconstructor: input_dim -> hidden_dims -> latent_dim -> hidden_dims -> input_dim.
     - Discriminative (optional): concat(input, reconstruction) -> MLP -> P(anomaly).
@@ -589,4 +589,4 @@ class DREAMPyTorch(DREAMAnomalyDetector):
 
 
 # Default implementation
-DREAMAnomalyDetector = DREAMPyTorch
+DRAEMAnomalyDetector = DRAEMPyTorch

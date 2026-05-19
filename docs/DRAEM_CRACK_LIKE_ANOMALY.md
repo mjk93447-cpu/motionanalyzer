@@ -1,8 +1,8 @@
-# DREAM 크랙 유사 합성 이상 생성 및 Threshold 최적화
+# DRAEM 크랙 유사 합성 이상 생성 및 Threshold 최적화
 
 ## 개요
 
-DREAM 모델의 합성 이상 생성 방식을 단순 Gaussian 노이즈에서 **크랙 유사 물리 기반 패턴**으로 변경하고, threshold를 Precision-Recall 균형에 맞게 최적화했습니다.
+DRAEM 모델의 합성 이상 생성 방식을 단순 Gaussian 노이즈에서 **크랙 유사 물리 기반 패턴**으로 변경하고, threshold를 Precision-Recall 균형에 맞게 최적화했습니다.
 
 ## 핵심 개선 사항
 
@@ -39,7 +39,7 @@ DREAM 모델의 합성 이상 생성 방식을 단순 Gaussian 노이즈에서 *
 
 ## 성능 개선 결과
 
-### 합성 데이터 검증 (`scripts/validate_dream_synthetic.py`)
+### 합성 데이터 검증 (`scripts/validate_draem_synthetic.py`)
 
 **이전 (단순 노이즈 + p95 threshold)**:
 - Accuracy: 0.5312
@@ -66,27 +66,27 @@ DREAM 모델의 합성 이상 생성 방식을 단순 Gaussian 노이즈에서 *
 
 ### 파일 변경
 
-1. **`src/motionanalyzer/ml_models/dream.py`**:
+1. **`src/motionanalyzer/ml_models/draem.py`**:
    - `_generate_crack_like_anomaly()`: 크랙 유사 합성 이상 생성
    - `fit()`: feature_names 전달 및 크랙 유사 이상 사용
    - `optimize_threshold_for_precision_recall()`: Threshold 최적화
 
 2. **`src/motionanalyzer/gui/runners.py`**:
-   - `_run_dream()`: feature_names 전달 및 threshold 최적화 옵션 추가
+   - `_run_draem()`: feature_names 전달 및 threshold 최적화 옵션 추가
 
-3. **`scripts/validate_dream_synthetic.py`**:
+3. **`scripts/validate_draem_synthetic.py`**:
    - DataFrame 사용으로 feature_names 전달
    - Threshold 최적화 결과 출력
 
 ### 사용 예시
 
 ```python
-from motionanalyzer.ml_models.dream import DREAMPyTorch
+from motionanalyzer.ml_models.draem import DRAEMPyTorch
 import pandas as pd
 
 # DataFrame으로 학습 (feature_names 자동 추출)
 normal_df = pd.DataFrame(X_normal, columns=feature_cols)
-model = DREAMPyTorch(
+model = DRAEMPyTorch(
     input_dim=len(feature_cols),
     use_discriminative=True,
     synthetic_noise_std=0.3,  # Fallback용
@@ -110,7 +110,7 @@ print(f"Precision: {metrics['precision']:.3f}, Recall: {metrics['recall']:.3f}, 
 1. **실제 크랙 데이터 활용**: 소수의 실제 크랙 데이터로 fine-tuning (few-shot learning)
 2. **합성 이상 강도 조정**: 도메인 특성에 맞게 스케일 팩터 튜닝
 3. **시계열 패턴 강화**: 프레임 간 temporal dependency 모델링
-4. **앙상블**: DREAM + PatchCore 앙상블로 성능 향상
+4. **앙상블**: DRAEM + PatchCore 앙상블로 성능 향상
 
 ## 참고
 

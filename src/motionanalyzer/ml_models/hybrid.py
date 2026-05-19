@@ -1,5 +1,5 @@
 """
-Ensemble anomaly detection combining DREAM and PatchCore.
+Ensemble anomaly detection combining DRAEM and PatchCore.
 
 Implements multiple ensemble strategies:
 - Weighted Average: Combine scores with optimized weights (α)
@@ -28,37 +28,38 @@ class EnsembleStrategy(str, Enum):
     WEIGHTED_AVERAGE = "weighted_average"
     MAXIMUM = "maximum"
     STACKING = "stacking"
+    BOTH_AGREE = "both_agree"  # Paper pipeline: DRAEM AND PatchCore binary agree
 
 
 class EnsembleAnomalyDetector:
     """
-    Ensemble anomaly detector combining DREAM and PatchCore.
+    Ensemble anomaly detector combining DRAEM and PatchCore.
 
     Combines predictions from multiple base models to improve robustness and performance.
     """
 
     def __init__(
         self,
-        dream_model: Any,
+        draem_model: Any,
         patchcore_model: Any,
         strategy: EnsembleStrategy = EnsembleStrategy.WEIGHTED_AVERAGE,
-        dream_weight: float = 0.5,
+        draem_weight: float = 0.5,
         patchcore_weight: float = 0.5,
     ) -> None:
         """
         Initialize ensemble detector.
 
         Args:
-            dream_model: Trained DREAM model (DREAMPyTorch instance)
+            draem_model: Trained DRAEM model (DRAEMPyTorch instance)
             patchcore_model: Trained PatchCore model (PatchCoreScikitLearn instance)
             strategy: Ensemble combination strategy
-            dream_weight: Weight for DREAM scores (used in weighted_average)
+            draem_weight: Weight for DRAEM scores (used in weighted_average)
             patchcore_weight: Weight for PatchCore scores (used in weighted_average)
         """
-        self.dream_model = dream_model
+        self.draem_model = draem_model
         self.patchcore_model = patchcore_model
         self.strategy = strategy
-        self.dream_weight = dream_weight
+        self.draem_weight = draem_weight
         self.patchcore_weight = patchcore_weight
         self.ensemble_threshold: Optional[float] = None
         self._meta_classifier: Optional[Any] = None  # For stacking strategy
@@ -73,39 +74,41 @@ class EnsembleAnomalyDetector:
         Returns:
             Ensemble anomaly scores (higher = more anomalous). Shape: (n_samples,)
         """
-        dream_scores = self.dream_model.predict(data)
+        draem_scores = self.draem_model.predict(data)
         patchcore_scores = self.patchcore_model.predict(data)
 
         # Normalize scores to [0, 1] range for combination
-        dream_scores_norm = self._normalize_scores(dream_scores)
+        draem_scores_norm = self._normalize_scores(draem_scores)
         patchcore_scores_norm = self._normalize_scores(patchcore_scores)
 
         if self.strategy == EnsembleStrategy.WEIGHTED_AVERAGE:
-            # Weighted average: α * dream + (1-α) * patchcore
-            total_weight = self.dream_weight + self.patchcore_weight
+            # Weighted average: α * draem + (1-α) * patchcore
+            total_weight = self.draem_weight + self.patchcore_weight
             if total_weight > 0:
                 ensemble_scores = (
-                    self.dream_weight * dream_scores_norm + self.patchcore_weight * patchcore_scores_norm
+                    self.draem_weight * draem_scores_norm + self.patchcore_weight * patchcore_scores_norm
                 ) / total_weight
             else:
-                ensemble_scores = (dream_scores_norm + patchcore_scores_norm) / 2.0
+                ensemble_scores = (draem_scores_norm + patchcore_scores_norm) / 2.0
         elif self.strategy == EnsembleStrategy.MAXIMUM:
             # Maximum: Take max score (recall-oriented)
-            ensemble_scores = np.maximum(dream_scores_norm, patchcore_scores_norm)
+            ensemble_scores = np.maximum(draem_scores_norm, patchcore_scores_norm)
+        elif self.strategy == EnsembleStrategy.BOTH_AGREE:
+            ensemble_scores = np.minimum(draem_scores, patchcore_scores)
         elif self.strategy == EnsembleStrategy.STACKING:
             # Stacking: Meta-classifier on base predictions
             if self._meta_classifier is None:
                 # Fallback to weighted average if meta-classifier not trained
-                total_weight = self.dream_weight + self.patchcore_weight
+                total_weight = self.draem_weight + self.patchcore_weight
                 if total_weight > 0:
                     ensemble_scores = (
-                        self.dream_weight * dream_scores_norm + self.patchcore_weight * patchcore_scores_norm
+                        self.draem_weight * draem_scores_norm + self.patchcore_weight * patchcore_scores_norm
                     ) / total_weight
                 else:
-                    ensemble_scores = (dream_scores_norm + patchcore_scores_norm) / 2.0
+                    ensemble_scores = (draem_scores_norm + patchcore_scores_norm) / 2.0
             else:
-                # Stack features: [dream_score, patchcore_score]
-                stack_features = np.column_stack([dream_scores_norm, patchcore_scores_norm])
+                # Stack features: [draem_score, patchcore_score]
+                stack_features = np.column_stack([draem_scores_norm, patchcore_scores_norm])
                 ensemble_scores = self._meta_classifier.predict_proba(stack_features)[:, 1]
         else:
             raise ValueError(f"Unknown strategy: {self.strategy}")
@@ -123,6 +126,10 @@ class EnsembleAnomalyDetector:
         Returns:
             Binary labels (0 or 1). Shape: (n_samples,)
         """
+        if self.strategy == EnsembleStrategy.BOTH_AGREE:
+            d_pred = self.draem_model.predict_binary(data)
+            p_pred = self.patchcore_model.predict_binary(data)
+            return ((d_pred == 1) & (p_pred == 1)).astype(int)
         scores = self.predict(data)
         thresh = threshold if threshold is not None else self.ensemble_threshold
         if thresh is None:
@@ -209,7 +216,7 @@ class EnsembleAnomalyDetector:
         """
         Optimize ensemble weights (α) for weighted_average strategy.
 
-        Searches over α ∈ [0, 1] to find optimal dream_weight = α, patchcore_weight = 1-α.
+        Searches over α ∈ [0, 1] to find optimal draem_weight = α, patchcore_weight = 1-α.
 
         Args:
             normal_data: Normal validation data
@@ -217,7 +224,7 @@ class EnsembleAnomalyDetector:
             target_metric: "f1", "precision", "recall", or "balanced"
 
         Returns:
-            (optimal_dream_weight, optimal_patchcore_weight, best_metrics)
+            (optimal_draem_weight, optimal_patchcore_weight, best_metrics)
         """
         if self.strategy != EnsembleStrategy.WEIGHTED_AVERAGE:
             raise ValueError("Weight optimization only applies to weighted_average strategy")
@@ -233,11 +240,11 @@ class EnsembleAnomalyDetector:
         best_alpha = 0.5
         best_metrics = {}
 
-        original_dream_weight = self.dream_weight
+        original_draem_weight = self.draem_weight
         original_patchcore_weight = self.patchcore_weight
 
         for alpha in alpha_values:
-            self.dream_weight = alpha
+            self.draem_weight = alpha
             self.patchcore_weight = 1.0 - alpha
 
             # Set threshold from normal data
@@ -273,15 +280,15 @@ class EnsembleAnomalyDetector:
                 best_metrics = {"precision": prec, "recall": rec, "f1": f1, "accuracy": acc}
 
         # Restore optimal weights
-        self.dream_weight = best_alpha
+        self.draem_weight = best_alpha
         self.patchcore_weight = 1.0 - best_alpha
 
         # Restore original weights if optimization failed
         if best_metric <= 0:
-            self.dream_weight = original_dream_weight
+            self.draem_weight = original_draem_weight
             self.patchcore_weight = original_patchcore_weight
 
-        return self.dream_weight, self.patchcore_weight, best_metrics
+        return self.draem_weight, self.patchcore_weight, best_metrics
 
     def fit_stacking(
         self,
@@ -304,20 +311,20 @@ class EnsembleAnomalyDetector:
             raise ImportError("Stacking requires scikit-learn")
 
         # Get base model predictions
-        dream_normal = self.dream_model.predict(normal_data)
-        dream_anomaly = self.dream_model.predict(anomaly_data)
+        draem_normal = self.draem_model.predict(normal_data)
+        draem_anomaly = self.draem_model.predict(anomaly_data)
         patchcore_normal = self.patchcore_model.predict(normal_data)
         patchcore_anomaly = self.patchcore_model.predict(anomaly_data)
 
         # Normalize scores
-        dream_normal_norm = self._normalize_scores(dream_normal)
-        dream_anomaly_norm = self._normalize_scores(dream_anomaly)
+        draem_normal_norm = self._normalize_scores(draem_normal)
+        draem_anomaly_norm = self._normalize_scores(draem_anomaly)
         patchcore_normal_norm = self._normalize_scores(patchcore_normal)
         patchcore_anomaly_norm = self._normalize_scores(patchcore_anomaly)
 
-        # Stack features: [dream_score, patchcore_score]
-        X_normal = np.column_stack([dream_normal_norm, patchcore_normal_norm])
-        X_anomaly = np.column_stack([dream_anomaly_norm, patchcore_anomaly_norm])
+        # Stack features: [draem_score, patchcore_score]
+        X_normal = np.column_stack([draem_normal_norm, patchcore_normal_norm])
+        X_anomaly = np.column_stack([draem_anomaly_norm, patchcore_anomaly_norm])
         X = np.vstack([X_normal, X_anomaly])
         y = np.concatenate([np.zeros(len(X_normal)), np.ones(len(X_anomaly))])
 
@@ -347,7 +354,7 @@ class EnsembleAnomalyDetector:
 
         config = {
             "strategy": self.strategy.value,
-            "dream_weight": self.dream_weight,
+            "draem_weight": self.draem_weight,
             "patchcore_weight": self.patchcore_weight,
             "ensemble_threshold": self.ensemble_threshold,
         }
@@ -367,6 +374,6 @@ class EnsembleAnomalyDetector:
         with open(path, "r") as f:
             config = json.load(f)
         self.strategy = EnsembleStrategy(config["strategy"])
-        self.dream_weight = config.get("dream_weight", 0.5)
+        self.draem_weight = config.get("draem_weight", 0.5)
         self.patchcore_weight = config.get("patchcore_weight", 0.5)
         self.ensemble_threshold = config.get("ensemble_threshold")

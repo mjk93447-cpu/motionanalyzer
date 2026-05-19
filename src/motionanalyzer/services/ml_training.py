@@ -11,14 +11,14 @@ import numpy as np
 import pandas as pd
 
 from motionanalyzer.gui.runners import (
-    _run_dream,
+    _run_draem,
     _run_ensemble,
     _run_patchcore,
     _run_temporal,
 )
 
 
-def run_dream_training(
+def run_draem_training(
     features_df: pd.DataFrame,
     labels: np.ndarray,
     *,
@@ -26,7 +26,7 @@ def run_dream_training(
     progress: Callable[[], None],
     **options: Any,
 ) -> dict[str, Any]:
-    return _run_dream(features_df, labels, log=log, progress=progress, **options)
+    return _run_draem(features_df, labels, log=log, progress=progress, **options)
 
 
 def run_patchcore_training(

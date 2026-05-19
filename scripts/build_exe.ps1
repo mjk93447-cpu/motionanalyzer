@@ -1,6 +1,7 @@
 Param(
     [string]$PythonExe = ".\.venv\Scripts\python.exe",
-    [switch]$IncludeML = $false
+    [switch]$IncludeML = $false,
+    [switch]$BundleModels = $false
 )
 
 $ErrorActionPreference = "Stop"
@@ -31,7 +32,7 @@ if ($IncludeML) {
     $excludeTorch = ""
 } else {
     Write-Host "==> Building offline Windows desktop GUI executable WITHOUT ML support"
-    Write-Host "Note: DREAM/PatchCore features will not work. Use -IncludeML for ML features."
+    Write-Host "Note: DRAEM/PatchCore features will not work. Use -IncludeML for ML features."
     $exeName = "motionanalyzer-gui"
     $excludeTorch = "--exclude-module torch"
 }
@@ -55,6 +56,16 @@ if ($excludeTorch) {
     $pyinstallerArgs += "--exclude-module", "torch"
 }
 
+if ($BundleModels) {
+    $modelsSrc = Join-Path (Split-Path -Parent $PSScriptRoot) "release\models"
+    if (-not (Test-Path $modelsSrc)) {
+        Write-Host "[WARN] -BundleModels set but release/models is empty. Run export_release_model_bundle.ps1 first."
+    } else {
+        $pyinstallerArgs += "--add-data", "$modelsSrc;models"
+        Write-Host "Bundling models from: $modelsSrc"
+    }
+}
+
 & $resolvedPython -m PyInstaller @pyinstallerArgs
 
 if ($LASTEXITCODE -ne 0) {
@@ -67,7 +78,12 @@ Write-Host " - dist\$exeName.exe"
 if ($IncludeML) {
     Write-Host ""
     Write-Host "ML-enabled EXE includes PyTorch and scikit-learn."
-    Write-Host "DREAM and PatchCore models can be loaded and used for inference."
+    Write-Host "DRAEM and PatchCore models can be loaded and used for inference."
+    if ($BundleModels) {
+        Write-Host "Models folder bundled under _MEIPASS/models (first-run copy to APPDATA)."
+    } else {
+        Write-Host "To embed pretrained weights: .\scripts\export_release_model_bundle.ps1 then build with -BundleModels"
+    }
 } else {
     Write-Host ""
     Write-Host "Lightweight EXE (ML features disabled)."

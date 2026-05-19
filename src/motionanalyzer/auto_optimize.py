@@ -2,7 +2,7 @@
 Auto-optimization data preparation pipeline for FPCB crack detection.
 
 Loads normal and crack datasets, extracts features, prepares data for
-deep learning models (DREAM, PatchCore) and parameter optimization.
+deep learning models (DRAEM, PatchCore) and parameter optimization.
 """
 
 from __future__ import annotations
@@ -14,8 +14,18 @@ from typing import Literal
 import numpy as np
 import pandas as pd
 
+import os
+
 from motionanalyzer.analysis import load_bundle, compute_vectors
 from motionanalyzer.crack_model import load_frame_metrics, compute_crack_risk, CrackModelParams
+
+
+def get_default_n_jobs() -> int:
+    """Return recommended n_jobs for CPU-bound parallel work (leaves 1 core for OS)."""
+    n = os.cpu_count()
+    if n is None or n < 2:
+        return 1
+    return max(1, n - 1)
 
 
 def _compute_advanced_stats(series: pd.Series, min_samples: int = 3) -> dict[str, float]:
@@ -216,7 +226,7 @@ class FeatureExtractionConfig:
 
     IMPORTANT:
     - For Physics parameter tuning/diagnostics, these can be useful.
-    - For ML anomaly detection evaluation (DREAM/PatchCore), including `crack_risk_*`
+    - For ML anomaly detection evaluation (DRAEM/PatchCore), including `crack_risk_*`
       can cause label leakage / circular evaluation. Prefer False for ML validation.
     """
     include_advanced_stats: bool = False
@@ -232,6 +242,66 @@ class FeatureExtractionConfig:
     - FFT magnitude/phase (dominant frequency, power spectral density)
     - Wavelet transform coefficients (optional, requires PyWavelets)
     """
+
+
+# CLI / paper pipeline preset (analyze_crack_detection.py)
+PAPER_FEATURE_CONFIG = FeatureExtractionConfig(
+    include_per_frame=True,
+    include_per_point=False,
+    include_global_stats=True,
+    include_crack_risk_features=False,
+    include_advanced_stats=True,
+    include_frequency_domain=True,
+)
+
+FEATURE_EXCLUDE_COLS = ["label", "dataset_path", "frame", "index", "x", "y"]
+
+
+def select_feature_columns(features_df: pd.DataFrame) -> list[str]:
+    """Numeric feature columns for ML (no leakage columns)."""
+    cols = [
+        c
+        for c in features_df.columns
+        if c not in FEATURE_EXCLUDE_COLS and "crack_risk" not in c.lower()
+        and c in features_df.select_dtypes(include=["number"]).columns
+    ]
+    if cols:
+        return cols
+    return [c for c in features_df.columns if c not in FEATURE_EXCLUDE_COLS and "crack_risk" not in c.lower()]
+
+
+def compute_norm_stats(
+    fit_df: pd.DataFrame,
+    exclude_cols: list[str] | None = None,
+) -> dict[str, dict[str, float]]:
+    """Per-column mean/std for z-score (from fit_df only)."""
+    if exclude_cols is None:
+        exclude_cols = FEATURE_EXCLUDE_COLS
+    stats: dict[str, dict[str, float]] = {}
+    for col in select_feature_columns(fit_df):
+        if col not in fit_df.columns:
+            continue
+        mean_val = float(fit_df[col].mean())
+        std_val = float(fit_df[col].std())
+        stats[col] = {"mean": mean_val, "std": std_val if std_val > 1e-9 else 1.0}
+    return stats
+
+
+def apply_norm_stats(
+    features_df: pd.DataFrame,
+    norm_stats: dict[str, dict[str, float]],
+    feature_cols: list[str],
+) -> pd.DataFrame:
+    """Z-score using precomputed stats; missing cols filled with 0."""
+    out = features_df.copy()
+    for col in feature_cols:
+        if col not in out.columns:
+            out[col] = 0.0
+            continue
+        st = norm_stats.get(col, {"mean": 0.0, "std": 1.0})
+        std = st["std"] if st["std"] > 1e-9 else 1.0
+        out[col] = (out[col].astype(float) - st["mean"]) / std
+    return out
 
 
 def load_dataset(
@@ -414,7 +484,10 @@ def prepare_training_data(
     fps: float | None = None,
     crack_params: CrackModelParams | None = None,
     feature_config: FeatureExtractionConfig | None = None,
-    n_jobs: int = 1,
+    n_jobs: int = 0,
+    *,
+    cache_dir: Path | None = None,
+    cache_key: str | None = None,
 ) -> tuple[pd.DataFrame, np.ndarray]:
     """
     Prepare training data from normal and crack datasets.
@@ -425,7 +498,9 @@ def prepare_training_data(
         fps: FPS (if None, read from each dataset's fps.txt)
         crack_params: Crack model parameters
         feature_config: Feature extraction configuration
-        n_jobs: Number of parallel workers for feature extraction (1=sequential).
+        n_jobs: Number of parallel workers (0=auto from cpu_count-1, 1=sequential, >1=parallel).
+        cache_dir: Optional directory for feature cache (when cache_key also provided).
+        cache_key: Unique key for cache file (e.g. "norm_ml_fp_focused_20k_60f", "eval_ml_100k_60f").
 
     Returns:
         (features_df, labels_array) where labels are 0 (normal) or 1 (crack)
@@ -433,10 +508,22 @@ def prepare_training_data(
     if feature_config is None:
         feature_config = FeatureExtractionConfig()
 
+    if cache_dir is not None and cache_key is not None:
+        cache_dir = Path(cache_dir)
+        cache_path = cache_dir / f"{cache_key}.pkl"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        if cache_path.exists():
+            import pickle
+            with open(cache_path, "rb") as f:
+                features_df, labels = pickle.load(f)
+            return features_df, labels
+
     tasks = [(p, 0, fps, crack_params, feature_config) for p in normal_datasets]
     tasks += [(p, 1, fps, crack_params, feature_config) for p in crack_datasets]
 
-    if n_jobs is None or n_jobs < 1:
+    if n_jobs == 0:
+        n_jobs = get_default_n_jobs()
+    elif n_jobs is None or n_jobs < 1:
         n_jobs = 1
 
     all_features: list[pd.DataFrame] = []
@@ -472,6 +559,12 @@ def prepare_training_data(
 
     features_df = pd.concat(all_features, ignore_index=True)
     labels = np.array(all_labels, dtype=int)
+
+    if cache_dir is not None and cache_key is not None:
+        cache_path = Path(cache_dir) / f"{cache_key}.pkl"
+        import pickle
+        with open(cache_path, "wb") as f:
+            pickle.dump((features_df, labels), f, protocol=4)
 
     return features_df, labels
 

@@ -38,6 +38,10 @@ class SyntheticConfig:
     scenario: ScenarioName = "normal"
     noise_mode: NoiseMode | None = None
     """Optional augmentation: gaussian, outlier, temporal_drift, scale_jitter, mixed."""
+    asymmetric_fold_strength: float = 0.0
+    """3D asymmetric folding surrogate: when >0, adds random left/right offset along contour to mimic
+    side-view projection where visible edge switches between left and right outer surfaces.
+    Strength = max offset as fraction of panel thickness. Applied to normal and abnormal alike."""
 
 
 @dataclass(frozen=True)
@@ -368,6 +372,44 @@ def _build_shape(
     return pts
 
 
+def _apply_asymmetric_3d_projection(
+    pts: np.ndarray,
+    strength: float,
+    thickness_px: float,
+    rng: np.random.Generator,
+    frame_idx: int,
+) -> None:
+    """
+    Simulate 3D asymmetric folding: side-view contour switches between left/right outer edges.
+
+    In real 3D bending, left and right sides can fold asymmetrically. The projected contour
+    may trace part of the left outer edge and part of the right, creating complex patterns.
+    This applies random perpendicular offsets (left/right) along the curve, in segments,
+    to mimic that effect. In-place modification.
+    """
+    if strength <= 0 or thickness_px <= 0:
+        return
+    n = len(pts)
+    if n < 3:
+        return
+    tangents = np.diff(pts, axis=0)
+    tangents = np.vstack([tangents[0], tangents, tangents[-1]])
+    norms = np.linalg.norm(tangents, axis=1, keepdims=True)
+    norms = np.where(norms > 1e-9, norms, 1.0)
+    tangents = tangents / norms
+    # Perpendicular: (-ty, tx) for "left", (ty, -tx) for "right"
+    perp = np.column_stack((-tangents[:, 1], tangents[:, 0]))
+    # Segment-based switching: every seg_len points, flip left/right
+    seg_len = max(5, int(n * (0.05 + rng.uniform(0, 0.15))))
+    side = 1
+    rng_local = np.random.default_rng(rng.integers(0, 2**31) + frame_idx * 1000)
+    for i in range(n):
+        if i > 0 and i % seg_len == 0:
+            side = -side if rng_local.random() < 0.6 else side
+        mag = strength * thickness_px * (0.5 + rng_local.uniform(0, 0.5))
+        pts[i] += side * mag * perp[i]
+
+
 def _frame_metrics(points: np.ndarray) -> tuple[float, float]:
     tangents = np.diff(points, axis=0)
     start_angle = float(np.arctan2(tangents[0, 1], tangents[0, 0]))
@@ -530,6 +572,14 @@ def generate_synthetic_bundle(
                 theta_total=theta,
                 weights=weights,
             )
+            if config.asymmetric_fold_strength > 0:
+                _apply_asymmetric_3d_projection(
+                    centerline,
+                    config.asymmetric_fold_strength,
+                    _panel_thickness_px(config),
+                    rng,
+                    frame_idx,
+                )
 
             # Base translation
             translation = np.array(

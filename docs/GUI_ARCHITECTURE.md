@@ -4,12 +4,13 @@
 
 | 탭 | 역할 | 입력 | 출력 | 사용 모델 |
 |----|------|------|------|------------|
-| **Analyze** | 단일 번들 분석 | input dir, output dir, FPS | vectors.csv, summary, vector_map | **Physics** (CrackModelParams) |
+| **Analyze** | 단일 번들 분석 | input dir, output dir, FPS, mm/px | vectors.csv, summary, vector_map, ML score CSV/plot | **Physics / DRAEM / PatchCore / Ensemble / Temporal** |
+| **Data** | 실데이터 수집·ingest | inbox (`data/raw`), bundle tree | preflight, manifest 경로 | ingest/manifest 스크립트 |
 | **Compare** | 두 분석 결과 비교 | base summary, candidate summary | Delta 수치 | 없음 (요약 비교) |
 | **Crack Model Tuning** | Physics 모델 파라미터 편집 | 슬라이더, 테스트 데이터셋 경로 | 사용자 설정 저장, Preview 통계 | **Physics** |
-| **ML & Optimization** | 학습/최적화 | 정상·크랙 데이터셋, 모드 선택 | 학습된 모델 또는 최적 파라미터 | **Physics / DREAM / PatchCore / Grid / Bayesian** |
+| **ML & Optimization** | 학습/최적화 | manifest, Paper/CLI preset | `draem_model.pt`, `patchcore_model.npz`, `bundle_manifest.json` | **Physics / DRAEM / PatchCore / Ensemble / Grid / Bayesian** |
 
-- **분석(추론)** 은 Analyze 탭에서만 수행. 사용 중인 “분석 모드”는 향후 Physics / DREAM / PatchCore 중 선택 가능하도록 확장.
+- **분석(추론)** 은 Analyze 탭에서 수행. DRAEM/PatchCore/Ensemble은 `services.ml_inference.predict_bundle` + `bundle_manifest.json` (CLI와 동일 특징·정규화).
 - **학습·최적화** 는 ML & Optimization 탭에서만 수행. 모드별로 코드 경로가 완전히 분리됨.
 
 ---
@@ -21,7 +22,7 @@
 | 모드 ID | 설명 | 학습 필요 | 추론 시 사용 데이터 | 담당 모듈 |
 |---------|------|-----------|--------------------|-----------|
 | `physics` | 물리 기반 P(crack) (스트레인·곡률·임팩트) | 아니오 (파라미터만 튜닝) | CrackModelParams + vectors | `crack_model` |
-| `dream` | 정상만 학습 오토인코더, 재구성 오차로 이상 점수 | 예 (정상 데이터) | 학습된 DREAM 모델 | `ml_models.dream` |
+| `draem` | 정상만 학습 오토인코더, 재구성 오차로 이상 점수 | 예 (정상 데이터) | 학습된 DRAEM 모델 | `ml_models.draem` |
 | `patchcore` | 정상 특징 메모리 뱅크, 거리로 이상 점수 | 예 (정상 데이터) | 학습된 PatchCore 모델 | `ml_models.patchcore` |
 | `grid_search` | CrackModelParams 그리드 서치 | 아니오 (정상+크랙으로 검증) | 최적 CrackModelParams | `optimizers.grid_search` |
 | `bayesian` | CrackModelParams 베이지안 최적화 | 아니오 (정상+크랙으로 검증) | 최적 CrackModelParams | `optimizers.bayesian` |
@@ -29,12 +30,12 @@
 - **학습/최적화** 는 `gui.runners`에서 모드별로 한 진입점만 호출 (예: `run_training_or_optimization(mode, ...)`).
 - GUI는 모드 선택 후 “실행” 시 해당 러너만 호출하므로, 모델 간 의존성/중복 없이 코드 완전 분리.
 
-### 2.2 Analyze 탭의 “분석 모드” (향후 확장)
+### 2.2 Analyze 탭의 “분석 모드”
 
-- 현재: 항상 **Physics** (run_analysis → crack_model).
-- 확장 시: 콤보박스로 [Physics | DREAM | PatchCore] 선택 시,
-  - Physics: 기존 `run_analysis` (crack_risk).
-  - DREAM/PatchCore: 저장된 모델 로드 후 `model.predict(features)` → 이상 점수를 crack_risk 대신 표시 (동일 UI 재사용).
+- **Physics**: `run_analysis` → crack_model / vector map.
+- **draem / patchcore / ensemble**: physics 출력 후 `predict_bundle()`; manifest 필수; ensemble 기본 `both_agree`.
+- **temporal**: ML 탭에서 학습; Analyze 연동은 manifest 기반으로 확장 예정.
+- 모델 상태 행: weights + `bundle_manifest.json` 존재 여부.
 
 ---
 
@@ -59,7 +60,7 @@
 
 ### 3.3 모델·러너
 
-- 모드 상수: 소문자 스네이크 `physics`, `dream`, `patchcore`, `grid_search`, `bayesian`.
+- 모드 상수: 소문자 스네이크 `physics`, `draem`, `patchcore`, `grid_search`, `bayesian`.
 - 러너 함수: `run_<mode>_training` 또는 `run_<mode>_optimization` (gui.runners에서만 사용).
 - GUI에서는 `_on_start_ml_or_optimization` → `runners.run(mode, ...)` 한 번만 호출.
 
@@ -100,8 +101,8 @@
 
 - [ ] 모든 탭이 동일한 패딩/스타일 사용
 - [ ] 모드 선택은 라디오 또는 콤보로 한 곳에서만 (ML & Optimization 탭)
-- [ ] Physics / DREAM / PatchCore / Grid / Bayesian 각각 별도 러너 모듈 또는 함수로 분리
-- [ ] Analyze 탭에 “분석 모드” 콤보 추가 시 Physics/DREAM/PatchCore 전환 가능
+- [ ] Physics / DRAEM / PatchCore / Grid / Bayesian 각각 별도 러너 모듈 또는 함수로 분리
+- [ ] Analyze 탭에 “분석 모드” 콤보 추가 시 Physics/DRAEM/PatchCore 전환 가능
 - [ ] 사용자 설정 경로: `%APPDATA%/motionanalyzer/` (이미 반영)
 - [ ] 모델 저장 경로: `%APPDATA%/motionanalyzer/models/` 등 고정 경로 사용 권장
 

@@ -51,6 +51,8 @@ class PatchCoreAnomalyDetector(ABC):
         self.memory_bank: Optional[np.ndarray] = None
         self.is_trained = False
         self.anomaly_threshold: Optional[float] = None
+        self.training_sources: list[str] = []
+        self.n_bank_samples: int = 0
 
     @abstractmethod
     def fit(self, normal_data: pd.DataFrame | np.ndarray) -> None:
@@ -110,6 +112,11 @@ class PatchCoreAnomalyDetector(ABC):
         scores = self.predict(normal_data)
         self.anomaly_threshold = float(np.percentile(scores, percentile))
 
+    def refit_threshold(self, normal_data: pd.DataFrame | np.ndarray, percentile: float = 95.0) -> float:
+        """Recalibrate anomaly threshold on new normal validation data."""
+        self.set_threshold_from_normal(normal_data, percentile=percentile)
+        return float(self.anomaly_threshold or 0.0)
+
 
 def _to_array(data: pd.DataFrame | np.ndarray) -> np.ndarray:
     """Convert DataFrame or array to float32 2D array."""
@@ -138,6 +145,30 @@ class PatchCoreScikitLearn(PatchCoreAnomalyDetector):
         super().__init__(feature_dim, coreset_size, k_neighbors)
         self._nn: Optional[Any] = None  # sklearn NearestNeighbors
 
+    def _build_coreset(self, X: np.ndarray, rng: np.random.Generator | None = None) -> np.ndarray:
+        n = len(X)
+        if n <= self.coreset_size:
+            return X
+        rng = rng or np.random.default_rng(42)
+        idx = rng.choice(n, size=self.coreset_size, replace=False)
+        return X[idx]
+
+    def _fit_nn_on_bank(self) -> None:
+        from sklearn.neighbors import NearestNeighbors
+
+        if self.memory_bank is None or len(self.memory_bank) == 0:
+            raise ValueError("memory_bank is empty")
+        self._nn = NearestNeighbors(
+            n_neighbors=min(self.k_neighbors, len(self.memory_bank)),
+            algorithm="auto",
+            metric="minkowski",
+            p=2,
+            n_jobs=-1,
+        )
+        self._nn.fit(self.memory_bank)
+        self.is_trained = True
+        self.n_bank_samples = int(len(self.memory_bank))
+
     def fit(self, normal_data: pd.DataFrame | np.ndarray) -> None:
         """Build memory bank (coreset) and fit NearestNeighbors."""
         try:
@@ -151,22 +182,43 @@ class PatchCoreScikitLearn(PatchCoreAnomalyDetector):
         if X.shape[1] != self.feature_dim:
             self.feature_dim = X.shape[1]
 
-        n = len(X)
-        if n <= self.coreset_size:
-            self.memory_bank = X
-        else:
-            rng = np.random.default_rng(42)
-            idx = rng.choice(n, size=self.coreset_size, replace=False)
-            self.memory_bank = X[idx]
+        self.memory_bank = self._build_coreset(X)
+        self._fit_nn_on_bank()
+        self.training_sources = ["scratch"]
 
-        self._nn = NearestNeighbors(
-            n_neighbors=min(self.k_neighbors, len(self.memory_bank)),
-            algorithm="auto",
-            metric="minkowski",
-            p=2,
-        )
-        self._nn.fit(self.memory_bank)
-        self.is_trained = True
+    def fit_incremental(
+        self,
+        normal_data: pd.DataFrame | np.ndarray,
+        *,
+        merge_strategy: str = "concat_resample",
+        source_tag: str = "incremental",
+    ) -> None:
+        """
+        Merge new normal features into memory bank (real-data refinement).
+
+        Only normal rows belong in the bank; crack samples are for evaluation only.
+        """
+        if not self.is_trained or self.memory_bank is None:
+            raise ValueError("Load or fit a model before fit_incremental().")
+
+        X_new = _to_array(normal_data)
+        if X_new.shape[1] != self.feature_dim:
+            raise ValueError(
+                f"Feature dim mismatch: model expects {self.feature_dim}, got {X_new.shape[1]}. "
+                "Use the same bundle_manifest feature_cols as pretraining."
+            )
+        if len(X_new) == 0:
+            raise ValueError("No normal samples provided for incremental fit.")
+
+        if merge_strategy == "concat_resample":
+            combined = np.vstack([self.memory_bank, X_new])
+            self.memory_bank = self._build_coreset(combined, rng=np.random.default_rng(42))
+        else:
+            raise ValueError(f"Unknown merge_strategy: {merge_strategy}")
+
+        self._fit_nn_on_bank()
+        if source_tag and source_tag not in self.training_sources:
+            self.training_sources.append(source_tag)
 
     def predict(self, data: pd.DataFrame | np.ndarray) -> np.ndarray:
         """Anomaly score = mean distance to k_neighbors in memory bank."""
@@ -199,6 +251,8 @@ class PatchCoreScikitLearn(PatchCoreAnomalyDetector):
             coreset_size=self.coreset_size,
             k_neighbors=self.k_neighbors,
             anomaly_threshold=np.array(self.anomaly_threshold) if self.anomaly_threshold is not None else None,
+            n_bank_samples=np.array(self.n_bank_samples or len(self.memory_bank)),
+            training_sources=np.array(self.training_sources, dtype=object),
         )
 
     def load(self, path: Path) -> None:
@@ -219,16 +273,19 @@ class PatchCoreScikitLearn(PatchCoreAnomalyDetector):
         self.anomaly_threshold = None
         if "anomaly_threshold" in data:
             t = data["anomaly_threshold"]
-            self.anomaly_threshold = None if t is None else float(np.asarray(t).flat[0])
-        self.is_trained = True
-
-        self._nn = NearestNeighbors(
-            n_neighbors=min(self.k_neighbors, len(self.memory_bank)),
-            algorithm="auto",
-            metric="minkowski",
-            p=2,
-        )
-        self._nn.fit(self.memory_bank)
+            if t is None:
+                self.anomaly_threshold = None
+            else:
+                flat = np.asarray(t).ravel()
+                val = flat[0] if flat.size else None
+                self.anomaly_threshold = None if val is None else float(val)
+        self.n_bank_samples = int(data["n_bank_samples"]) if "n_bank_samples" in data else len(self.memory_bank)
+        if "training_sources" in data:
+            raw = data["training_sources"]
+            self.training_sources = list(raw.tolist()) if hasattr(raw, "tolist") else list(raw)
+        else:
+            self.training_sources = []
+        self._fit_nn_on_bank()
 
 
 # Default implementation

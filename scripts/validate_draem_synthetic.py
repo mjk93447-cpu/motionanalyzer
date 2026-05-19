@@ -1,5 +1,5 @@
 """
-DREAM (DRAEM strategy) validation on synthetic data.
+DRAEM (DRAEM strategy) validation on synthetic data.
 
 Reports accuracy, precision, recall, F1, and AUC-ROC. DRAEM paper reports
 98.1% image-level ROC AUC on MVTec AD; our domain is FPCB tabular—use this
@@ -7,7 +7,7 @@ script for regression and relative comparison only.
 
 Usage (from repo root):
   pip install -e ".[ml]"
-  python scripts/validate_dream_synthetic.py
+  python scripts/validate_draem_synthetic.py
 """
 
 from __future__ import annotations
@@ -75,13 +75,13 @@ def main() -> None:
             f1_score,
             roc_auc_score,
         )
-        from motionanalyzer.ml_models.dream import DREAMPyTorch
+        from motionanalyzer.ml_models.draem import DRAEMPyTorch
     except ImportError as e:
-        print("DREAM validation requires PyTorch and scikit-learn: pip install -e '.[ml]'")
+        print("DRAEM validation requires PyTorch and scikit-learn: pip install -e '.[ml]'")
         raise SystemExit(1) from e
 
     import tempfile
-    print("DREAM (DRAEM strategy) validation on synthetic data")
+    print("DRAEM (DRAEM strategy) validation on synthetic data")
     # Avoid non-CP949 punctuation on some Windows consoles
     print("Reference: Zavrtanik et al., ICCV 2021 - MVTec image-level ROC AUC 98.1%")
     print("Our domain: FPCB tabular; results not directly comparable.\n")
@@ -102,7 +102,7 @@ def main() -> None:
         # Prepare feature names for crack-like anomaly generation
         feature_cols_list = feature_cols
 
-        model = DREAMPyTorch(
+        model = DRAEMPyTorch(
             input_dim=n_features,
             hidden_dims=[32, 16],
             latent_dim=4,

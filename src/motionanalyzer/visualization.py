@@ -63,6 +63,20 @@ def _arrow_line_segments(
     ]
 
 
+def _flip_y_for_image_coords(
+    y: np.ndarray,
+    vy: np.ndarray,
+    ay: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Flip Y and vertical vector components so plots match image coordinates.
+
+    Source tracking uses y increasing downward (top-left origin). Matplotlib's
+    default y-up axis inverts the panel unless we negate y, vy, and ay.
+    """
+    return -y, -vy, -ay
+
+
 def _crack_probability_heuristic(
     acceleration: float,
     max_acceleration: float,
@@ -133,6 +147,11 @@ def plot_full_vector_map(
     m_per_px = float(meters_per_pixel) if use_si else 1.0
     x = df["x"].to_numpy(np.float64)
     y = df["y"].to_numpy(np.float64)
+    vx = df["vx"].to_numpy(np.float64)
+    vy = df["vy"].to_numpy(np.float64)
+    ax_arr = df["ax"].to_numpy(np.float64)
+    ay_arr = df["ay"].to_numpy(np.float64)
+    y, vy, ay_arr = _flip_y_for_image_coords(y, vy, ay_arr)
     if use_si:
         x = x * m_per_px
         y = y * m_per_px
@@ -156,10 +175,6 @@ def plot_full_vector_map(
         edgecolors="white",
         linewidths=point_edge_width,
     )
-    vx = df["vx"].to_numpy(np.float64)
-    vy = df["vy"].to_numpy(np.float64)
-    ax_arr = df["ax"].to_numpy(np.float64)
-    ay_arr = df["ay"].to_numpy(np.float64)
 
     # --- 2) Acceleration first (bottom layer): short, faint, thin so velocity stays clear ---
     tax = x + ax_arr * acc_scale_draw
@@ -220,13 +235,13 @@ def plot_full_vector_map(
     if "crack_risk" in df.columns:
         risk_row = df.loc[df["crack_risk"].idxmax()]
         ann_x = float(risk_row["x"]) * m_per_px
-        ann_y = float(risk_row["y"]) * m_per_px
+        ann_y = -float(risk_row["y"]) * m_per_px
         crack_prob = float(risk_row["crack_risk"])
         label_suffix = " (physics)"
     else:
         risk_row = df.loc[df["acceleration"].idxmax()]
         ann_x = float(risk_row["x"]) * m_per_px
-        ann_y = float(risk_row["y"]) * m_per_px
+        ann_y = -float(risk_row["y"]) * m_per_px
         max_acc = float(risk_row["acceleration"])
         max_curv = float(df["curvature_like"].max())
         crack_prob = _crack_probability_heuristic(
@@ -357,6 +372,11 @@ def create_full_vector_map_figure(
     m_per_px = float(meters_per_pixel) if use_si else 1.0
     x = df["x"].to_numpy(np.float64)
     y = df["y"].to_numpy(np.float64)
+    vx = df["vx"].to_numpy(np.float64)
+    vy = df["vy"].to_numpy(np.float64)
+    ax_arr = df["ax"].to_numpy(np.float64)
+    ay_arr = df["ay"].to_numpy(np.float64)
+    y, vy, ay_arr = _flip_y_for_image_coords(y, vy, ay_arr)
     if use_si:
         x = x * m_per_px
         y = y * m_per_px
@@ -377,11 +397,6 @@ def create_full_vector_map_figure(
         s=point_size, c=colors, alpha=point_alpha,
         edgecolors="white", linewidths=point_edge_width,
     )
-
-    vx = df["vx"].to_numpy(np.float64)
-    vy = df["vy"].to_numpy(np.float64)
-    ax_arr = df["ax"].to_numpy(np.float64)
-    ay_arr = df["ay"].to_numpy(np.float64)
 
     # --- 2) Acceleration (bottom layer) ---
     tax = x + ax_arr * acc_scale_draw
@@ -441,13 +456,13 @@ def create_full_vector_map_figure(
     if "crack_risk" in df.columns:
         risk_row = df.loc[df["crack_risk"].idxmax()]
         ann_x = float(risk_row["x"]) * m_per_px
-        ann_y = float(risk_row["y"]) * m_per_px
+        ann_y = -float(risk_row["y"]) * m_per_px
         crack_prob = float(risk_row["crack_risk"])
         label_suffix = " (physics)"
     else:
         risk_row = df.loc[df["acceleration"].idxmax()]
         ann_x = float(risk_row["x"]) * m_per_px
-        ann_y = float(risk_row["y"]) * m_per_px
+        ann_y = -float(risk_row["y"]) * m_per_px
         crack_prob = _crack_probability_heuristic(
             float(risk_row["acceleration"]),
             float(df["acceleration"].max()),
@@ -535,26 +550,34 @@ def create_vector_map_figure(
 
     dt_s = 1.0 / fps
 
+    x = df["x"].to_numpy(np.float64)
+    y = df["y"].to_numpy(np.float64)
+    vx = df["vx"].to_numpy(np.float64)
+    vy = df["vy"].to_numpy(np.float64)
+    ax_arr = df["ax"].to_numpy(np.float64)
+    ay_arr = df["ay"].to_numpy(np.float64)
+    y, vy, ay_arr = _flip_y_for_image_coords(y, vy, ay_arr)
+
     ax.scatter(
-        df["x"], df["y"],
+        x, y,
         s=point_size, c="#333333", alpha=point_alpha, edgecolors="none",
     )
     ax.quiver(
-        df["x"], df["y"],
-        df["vx"] * velocity_scale, df["vy"] * velocity_scale,
+        x, y,
+        vx * velocity_scale, vy * velocity_scale,
         color=velocity_color, alpha=velocity_alpha,
         width=velocity_width, scale=None, angles="xy", scale_units="xy",
     )
     ax.quiver(
-        df["x"], df["y"],
-        df["ax"] * acceleration_scale, df["ay"] * acceleration_scale,
+        x, y,
+        ax_arr * acceleration_scale, ay_arr * acceleration_scale,
         color=acceleration_color, alpha=acceleration_alpha,
         width=acceleration_width, scale=None, angles="xy", scale_units="xy",
     )
 
     max_acc_row = df.loc[df["acceleration"].idxmax()]
     max_x = float(max_acc_row["x"])
-    max_y = float(max_acc_row["y"])
+    max_y = -float(max_acc_row["y"])
     max_acc = float(max_acc_row["acceleration"])
     max_curv = float(df["curvature_like"].max())
     crack_prob = _crack_probability_heuristic(
@@ -609,6 +632,12 @@ def plot_vector_map(
     if "vx" not in df.columns or "vy" not in df.columns:
         raise ValueError("vectors.csv must contain vx and vy columns")
 
+    x = df["x"].to_numpy(np.float64)
+    y = df["y"].to_numpy(np.float64)
+    vx = df["vx"].to_numpy(np.float64)
+    vy = df["vy"].to_numpy(np.float64)
+    y, vy, _ = _flip_y_for_image_coords(y, vy, np.zeros_like(vy))
+
     fig, ax = plt.subplots(figsize=(16, 9), dpi=150)
     ax.set_aspect("equal", adjustable="box")
 
@@ -628,8 +657,8 @@ def plot_vector_map(
     df["color_norm"] = df["color_val"] / max(df["color_val"].max(), 1)
 
     ax.scatter(
-        df["x"],
-        df["y"],
+        x,
+        y,
         c=df["color_norm"],
         cmap=color_map,
         s=point_size,
@@ -637,12 +666,12 @@ def plot_vector_map(
         edgecolors="none",
     )
 
-    vx_scaled = df["vx"] * scale
-    vy_scaled = df["vy"] * scale
+    vx_scaled = vx * scale
+    vy_scaled = vy * scale
 
     ax.quiver(
-        df["x"],
-        df["y"],
+        x,
+        y,
         vx_scaled,
         vy_scaled,
         df["color_norm"],

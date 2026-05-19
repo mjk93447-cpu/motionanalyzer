@@ -5,7 +5,7 @@ import pandas as pd
 from motionanalyzer.gui.runners import (
     ALL_MODES,
     MODE_BAYESIAN,
-    MODE_DREAM,
+    MODE_DRAEM,
     MODE_ENSEMBLE,
     MODE_GRID_SEARCH,
     MODE_PATCHCORE,
@@ -18,7 +18,7 @@ from motionanalyzer.gui.runners import (
 def test_all_modes_defined() -> None:
     assert set(ALL_MODES) == {
         MODE_PHYSICS,
-        MODE_DREAM,
+        MODE_DRAEM,
         MODE_PATCHCORE,
         MODE_ENSEMBLE,
         MODE_TEMPORAL,
@@ -90,7 +90,7 @@ def test_patchcore_mode_with_sklearn_trains_and_returns_success() -> None:
         assert "crack_mean_score" in result
 
 
-def test_dream_mode_with_torch_trains_and_returns_success() -> None:
+def test_draem_mode_with_torch_trains_and_returns_success() -> None:
     try:
         import torch
     except ImportError:
@@ -107,6 +107,9 @@ def test_dream_mode_with_torch_trains_and_returns_success() -> None:
     df = df.drop(columns=["label"])
     labels = np.array([0] * n_normal + [1] * n_crack)
 
-    result = run_training_or_optimization(MODE_DREAM, df, labels, epochs=3)
+    result = run_training_or_optimization(MODE_DRAEM, df, labels, epochs=3)
     assert result["success"] is True
     assert "model_path" in result
+    from motionanalyzer.paths import get_bundle_manifest_path
+
+    assert get_bundle_manifest_path().exists()

@@ -1,0 +1,57 @@
+{
+  "dataset": "C:\\motionanalyzer\\data\\synthetic\\ml_pretrain_balanced_3k_60f",
+  "split_ratios": [
+    0.7,
+    0.2,
+    0.1
+  ],
+  "target_precision": 0.9,
+  "target_recall": 0.7,
+  "val": {
+    "draem": {
+      "threshold": 502.52691650390625,
+      "precision": 1.0,
+      "recall": 0.6981132075471698,
+      "tn": 320,
+      "fp": 0,
+      "fn": 16,
+      "tp": 37
+    },
+    "patchcore": {
+      "threshold": 162.81085205078125,
+      "precision": 1.0,
+      "recall": 0.6981132075471698,
+      "tn": 320,
+      "fp": 0,
+      "fn": 16,
+      "tp": 37
+    }
+  },
+  "test": {
+    "draem": {
+      "precision": 1.0,
+      "recall": 0.6774193548387096,
+      "tn": 234,
+      "fp": 0,
+      "fn": 10,
+      "tp": 21
+    },
+    "patchcore": {
+      "precision": 1.0,
+      "recall": 0.6774193548387096,
+      "tn": 234,
+      "fp": 0,
+      "fn": 10,
+      "tp": 21
+    },
+    "ensemble_both_agree": {
+      "precision": 1.0,
+      "recall": 0.6774193548387096,
+      "tn": 234,
+      "fp": 0,
+      "fn": 10,
+      "tp": 21
+    }
+  },
+  "elapsed_min": 14.4
+}

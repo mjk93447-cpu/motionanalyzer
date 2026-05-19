@@ -4,6 +4,7 @@ import os
 import platform
 import subprocess
 import sys
+import threading
 import tkinter as tk
 import traceback
 from pathlib import Path
@@ -25,7 +26,15 @@ from motionanalyzer.crack_model import (
     load_params,
     save_params,
 )
-from motionanalyzer.paths import get_default_dream_model_path, get_default_patchcore_model_path
+from motionanalyzer.paths import (
+    ensure_user_models_from_bundle,
+    get_artifacts_cache_dir,
+    get_bundle_manifest_path,
+    get_default_draem_model_path,
+    get_default_patchcore_model_path,
+    get_user_models_dir,
+    resolve_draem_model_path,
+)
 from motionanalyzer.time_series.changepoint import ChangePointResult
 from motionanalyzer.visualization import create_full_vector_map_figure
 
@@ -61,6 +70,7 @@ class MotionAnalyzerApp(tk.Tk):
         self.title("motionanalyzer - FPCB bending analysis (offline Windows GUI)")
         # Let user resize freely; start in a reasonable size.
         self.geometry("1280x800")
+        ensure_user_models_from_bundle()
 
         self._build_menu()
         self._build_widgets()
@@ -88,7 +98,7 @@ class MotionAnalyzerApp(tk.Tk):
 1. Analyze Tab:
    - Select input dataset folder (contains frame_*.txt and fps.txt)
    - Choose output directory
-   - Select analysis mode (Physics/DREAM/PatchCore/Ensemble/Temporal)
+   - Select analysis mode (Physics/DRAEM/PatchCore/Ensemble/Temporal)
    - Click "Run Analysis"
 
 2. Compare Tab:
@@ -156,7 +166,7 @@ Physics-based time-series motion analyzer
 Features:
 - Vector analysis (position, velocity, acceleration)
 - Synthetic data generation (5 scenarios)
-- ML-based anomaly detection (DREAM, PatchCore, Ensemble, Temporal)
+- ML-based anomaly detection (DRAEM, PatchCore, Ensemble, Temporal)
 - Change Point Detection (CUSUM, Window-based, PELT)
 - Advanced feature engineering
 
@@ -176,7 +186,9 @@ For more information:
         frame_auto_opt = ttk.Frame(notebook)
         frame_timeseries = ttk.Frame(notebook)
         frame_synthetic_goals = ttk.Frame(notebook)
+        frame_data = ttk.Frame(notebook)
         notebook.add(frame_analyze, text="Analyze")
+        notebook.add(frame_data, text="Data")
         notebook.add(frame_compare, text="Compare")
         notebook.add(frame_tuning, text="Crack Model Tuning")
         notebook.add(frame_auto_opt, text="ML & Optimization")
@@ -185,6 +197,7 @@ For more information:
         notebook.pack(fill=tk.BOTH, expand=True)
 
         self._build_analyze_tab(frame_analyze)
+        self._build_data_tab(frame_data)
         self._build_compare_tab(frame_compare)
         self._build_tuning_tab(frame_tuning)
         self._build_ml_optimization_tab(frame_auto_opt)
@@ -199,7 +212,8 @@ For more information:
         self.output_dir_var = tk.StringVar(value=DEFAULT_OUTPUT_DIR)
         self.fps_var = tk.StringVar(value="30.0")
         self.analysis_mode_var = tk.StringVar(value="physics")
-        self.dream_model_path_var = tk.StringVar(value=str(get_default_dream_model_path()))
+        self.dataset_level_max_var = tk.BooleanVar(value=True)
+        self.draem_model_path_var = tk.StringVar(value=str(get_default_draem_model_path()))
         self.patchcore_model_path_var = tk.StringVar(value=str(get_default_patchcore_model_path()))
 
         # Input dir
@@ -240,23 +254,28 @@ For more information:
         mode_combo = ttk.Combobox(
             row4,
             textvariable=self.analysis_mode_var,
-            values=["physics", "dream", "patchcore", "ensemble"],
+            values=["physics", "draem", "patchcore", "ensemble", "temporal"],
             state="readonly",
             width=18,
         )
         mode_combo.pack(side=tk.LEFT, padx=4)
+        ttk.Checkbutton(
+            row4,
+            text="Dataset-level max (paper)",
+            variable=self.dataset_level_max_var,
+        ).pack(side=tk.LEFT, padx=8)
 
-        # Model paths (used for DREAM/PatchCore inference)
-        model_frame = ttk.LabelFrame(parent, text="Models (for DREAM/PatchCore)")
+        # Model paths (used for DRAEM/PatchCore inference)
+        model_frame = ttk.LabelFrame(parent, text="Models (for DRAEM/PatchCore)")
         model_frame.pack(fill=tk.X, padx=8, pady=4)
 
         row_m1 = ttk.Frame(model_frame)
         row_m1.pack(fill=tk.X, padx=8, pady=4)
-        ttk.Label(row_m1, text="DREAM model path:").pack(side=tk.LEFT)
-        ttk.Entry(row_m1, textvariable=self.dream_model_path_var, width=80).pack(
+        ttk.Label(row_m1, text="DRAEM model path:").pack(side=tk.LEFT)
+        ttk.Entry(row_m1, textvariable=self.draem_model_path_var, width=80).pack(
             side=tk.LEFT, padx=4, fill=tk.X, expand=True
         )
-        ttk.Button(row_m1, text="Browse...", command=self._browse_dream_model).pack(side=tk.LEFT)
+        ttk.Button(row_m1, text="Browse...", command=self._browse_draem_model).pack(side=tk.LEFT)
 
         row_m2 = ttk.Frame(model_frame)
         row_m2.pack(fill=tk.X, padx=8, pady=4)
@@ -266,13 +285,20 @@ For more information:
         )
         ttk.Button(row_m2, text="Browse...", command=self._browse_patchcore_model).pack(side=tk.LEFT)
 
+        status_row = ttk.Frame(model_frame)
+        status_row.pack(fill=tk.X, padx=8, pady=2)
+        self.model_status_var = tk.StringVar(value="")
+        ttk.Label(status_row, textvariable=self.model_status_var, foreground="#333").pack(side=tk.LEFT)
+        ttk.Button(status_row, text="Refresh status", command=self._refresh_model_status).pack(side=tk.LEFT, padx=8)
+        self._refresh_model_status()
+
         # Run button
         btn_frame = ttk.Frame(parent)
         btn_frame.pack(fill=tk.X, padx=8, pady=4)
         ttk.Button(
             btn_frame,
             text="Run Analysis",
-            command=self._on_run_analysis,
+            command=self._on_run_analysis_threaded,
         ).pack(side=tk.LEFT)
 
         # Summary display
@@ -281,8 +307,8 @@ For more information:
         self.summary_text = tk.Text(summary_frame, height=8, wrap=tk.NONE)
         self.summary_text.pack(fill=tk.BOTH, expand=True)
 
-        # Anomaly scores display (DREAM/PatchCore)
-        self.anomaly_frame = ttk.LabelFrame(parent, text="Anomaly Scores (DREAM/PatchCore)")
+        # Anomaly scores display (DRAEM/PatchCore)
+        self.anomaly_frame = ttk.LabelFrame(parent, text="Anomaly Scores (DRAEM/PatchCore)")
         self.anomaly_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
         self._anomaly_canvas: Any = None
         self._anomaly_toolbar: Any = None
@@ -358,14 +384,14 @@ For more information:
         if path:
             self.output_dir_var.set(path)
 
-    def _browse_dream_model(self) -> None:
+    def _browse_draem_model(self) -> None:
         path = filedialog.askopenfilename(
-            title="Select DREAM model",
+            title="Select DRAEM model",
             filetypes=[("PyTorch model", "*.pt"), ("All files", "*.*")],
             initialdir=str(_project_root()),
         )
         if path:
-            self.dream_model_path_var.set(path)
+            self.draem_model_path_var.set(path)
 
     def _browse_patchcore_model(self) -> None:
         path = filedialog.askopenfilename(
@@ -476,123 +502,140 @@ For more information:
         except Exception as exc:  # pragma: no cover
             self._append_log(f"Anomaly plot display failed: {exc}")
 
-    def _build_inference_features(self, vectors_csv: Path, frame_metrics_csv: Path) -> pd.DataFrame:
-        vectors = pd.read_csv(vectors_csv)
-        agg_spec: dict[str, list[str]] = {}
-        for base in [
-            "strain_surrogate",
-            "stress_surrogate",
-            "impact_surrogate",
-            "curvature_like",
-            "acceleration",
-            "speed",
-        ]:
-            if base in vectors.columns:
-                agg_spec[base] = ["mean", "max", "std"]
-        if not agg_spec:
-            raise ValueError(f"No supported feature columns found in {vectors_csv}")
+    def _build_data_tab(self, parent: tk.Widget) -> None:
+        from motionanalyzer.gui.data_tab import DataTabController
 
-        per_frame = vectors.groupby("frame").agg(agg_spec).reset_index()
-        per_frame.columns = ["frame"] + [f"{c[0]}_{c[1]}" for c in per_frame.columns[1:]]
-
-        if frame_metrics_csv.exists():
-            fm = pd.read_csv(frame_metrics_csv)
-            cols = [
-                c
-                for c in ["frame", "bend_angle_deg", "curvature_concentration", "est_max_strain"]
-                if c in fm.columns
-            ]
-            if "frame" in cols and len(cols) > 1:
-                per_frame = per_frame.merge(fm[cols], on="frame", how="left")
-
-        per_frame = per_frame.sort_values("frame").reset_index(drop=True)
-        return per_frame
-
-    def _load_dream_model(self) -> Any:
-        model_path = _resolve_path(self.dream_model_path_var.get())
-        if not model_path.exists():
-            raise FileNotFoundError(
-                f"DREAM model not found: {model_path}\n"
-                "Train a model first in 'ML & Optimization' tab, or use Physics mode."
-            )
-        try:
-            from motionanalyzer.ml_models.dream import DREAMPyTorch
-        except ImportError as e:
-            raise ImportError(
-                "PyTorch not available. Install with: pip install -e '.[ml]'\n"
-                "Or use Physics mode instead."
-            ) from e
-
-        model = DREAMPyTorch(input_dim=1)
-        model.load(model_path)
-        return model
-
-    def _load_patchcore_model(self) -> Any:
-        model_path = _resolve_path(self.patchcore_model_path_var.get())
-        if not model_path.exists():
-            raise FileNotFoundError(
-                f"PatchCore model not found: {model_path}\n"
-                "Train a model first in 'ML & Optimization' tab, or use Physics mode."
-            )
-        try:
-            from motionanalyzer.ml_models.patchcore import PatchCoreScikitLearn
-        except ImportError as e:
-            raise ImportError(
-                "scikit-learn not available. Install with: pip install -e '.[ml]'\n"
-                "Or use Physics mode instead."
-            ) from e
-
-        model = PatchCoreScikitLearn(feature_dim=1)
-        model.load(model_path)
-        return model
-
-    def _load_ensemble_model(self) -> Any:
-        dream_model_path = _resolve_path(self.dream_model_path_var.get())
-        patchcore_model_path = _resolve_path(self.patchcore_model_path_var.get())
-        if not dream_model_path.exists():
-            raise FileNotFoundError(
-                f"DREAM model not found: {dream_model_path}\n"
-                "Train a DREAM model first in 'ML & Optimization' tab."
-            )
-        if not patchcore_model_path.exists():
-            raise FileNotFoundError(
-                f"PatchCore model not found: {patchcore_model_path}\n"
-                "Train a PatchCore model first in 'ML & Optimization' tab."
-            )
-        try:
-            from motionanalyzer.ml_models.hybrid import EnsembleAnomalyDetector, EnsembleStrategy
-            from motionanalyzer.ml_models.dream import DREAMPyTorch
-            from motionanalyzer.ml_models.patchcore import PatchCoreScikitLearn
-        except ImportError as e:
-            raise ImportError(
-                "ML dependencies not available. Install with: pip install -e '.[ml]'\n"
-                "Or use Physics mode instead."
-            ) from e
-
-        dream_model = DREAMPyTorch(input_dim=1)
-        dream_model.load(dream_model_path)
-        patchcore_model = PatchCoreScikitLearn(feature_dim=1)
-        patchcore_model.load(patchcore_model_path)
-
-        ensemble = EnsembleAnomalyDetector(
-            dream_model=dream_model,
-            patchcore_model=patchcore_model,
-            strategy=EnsembleStrategy.WEIGHTED_AVERAGE,
-            dream_weight=0.5,
-            patchcore_weight=0.5,
+        self._data_tab = DataTabController(
+            parent,
+            log_fn=self._append_log,
+            on_open_in_analyze=lambda p: self.input_dir_var.set(p),
+            on_open_patchcore_refine=self._load_manifest_normals_for_patchcore,
+            project_root=_project_root(),
         )
 
-        # Try to load ensemble config if exists
-        from motionanalyzer.paths import get_user_models_dir
-        ensemble_config_path = get_user_models_dir() / "ensemble_config.json"
-        if ensemble_config_path.exists():
-            ensemble.load(ensemble_config_path)
-        else:
-            # Set default threshold from normal data if available
-            # This is a placeholder; in practice, threshold should be set during training
-            pass
+    def _refresh_model_status(self) -> None:
+        import json
 
-        return ensemble
+        models_dir = get_user_models_dir()
+        parts: list[str] = []
+        for label, path in (
+            ("DRAEM", resolve_draem_model_path(get_default_draem_model_path())),
+            ("PatchCore", get_default_patchcore_model_path()),
+            ("Manifest", get_bundle_manifest_path(models_dir)),
+        ):
+            parts.append(f"{label}: {'OK' if path.exists() else 'missing'}")
+        mf = get_bundle_manifest_path(models_dir)
+        if mf.exists():
+            try:
+                meta = json.loads(mf.read_text(encoding="utf-8"))
+                bank = meta.get("patchcore_n_bank_samples")
+                ds = meta.get("training_dataset_id", "")
+                if bank is not None:
+                    parts.append(f"PC bank={bank}")
+                if ds:
+                    parts.append(f"ds={ds}")
+            except Exception:
+                pass
+        self.model_status_var.set(" | ".join(parts))
+
+    def _apply_paper_feature_preset(self) -> None:
+        self.include_per_frame_var.set(True)
+        self.include_per_point_var.set(False)
+        self.include_global_stats_var.set(True)
+        self.include_advanced_stats_var.set(True)
+        self.include_frequency_domain_var.set(True)
+        self._append_log("Applied Paper/CLI feature preset (matches analyze_crack_detection.py).")
+
+    def _browse_manifest(self) -> None:
+        path = filedialog.askopenfilename(
+            title="Select manifest.json",
+            filetypes=[("JSON", "*.json"), ("All", "*.*")],
+            initialdir=str(_project_root() / "data"),
+        )
+        if path:
+            self.manifest_path_var.set(path)
+
+    def _load_manifest_normals_for_patchcore(self, manifest_path: str | None = None) -> None:
+        """Load normal train paths from manifest into normal datasets list (real-data refine)."""
+        import json
+
+        mp = manifest_path or self.manifest_path_var.get().strip()
+        if not mp:
+            path = filedialog.askopenfilename(
+                title="Select manifest.json",
+                filetypes=[("JSON", "*.json")],
+                initialdir=str(_project_root() / "data"),
+            )
+            if not path:
+                return
+            mp = path
+            self.manifest_path_var.set(mp)
+        mf = Path(mp)
+        if not mf.exists():
+            messagebox.showerror("Manifest", f"Not found:\n{mf}")
+            return
+        data = json.loads(mf.read_text(encoding="utf-8"))
+        base = mf.parent
+        self.normal_datasets_listbox.delete(0, tk.END)
+        n = 0
+        for entry in data.get("entries", []):
+            if entry.get("label", 0) != 0:
+                continue
+            if entry.get("split") not in ("train", "val"):
+                continue
+            p = base / entry["path"]
+            if p.is_dir():
+                self.normal_datasets_listbox.insert(tk.END, str(p.resolve()))
+                n += 1
+        self.opt_method_var.set("patchcore")
+        self.patchcore_train_mode_var.set("refine")
+        self._append_log(f"Loaded {n} normal bundle(s) from manifest for PatchCore refine.")
+        messagebox.showinfo("PatchCore refine", f"Loaded {n} normal paths.\nPrepare Data, then Run (PatchCore + refine).")
+
+    def _on_evaluate_patchcore(self) -> None:
+        if not hasattr(self, "training_features") or not hasattr(self, "training_labels"):
+            messagebox.showerror("Evaluate", "Prepare training data first.")
+            return
+        try:
+            from motionanalyzer.gui.runners import evaluate_patchcore_on_prepared
+
+            ev = evaluate_patchcore_on_prepared(
+                self.training_features,
+                self.training_labels,
+                self.patchcore_model_path_var.get(),
+            )
+            msg = (
+                f"PatchCore evaluate:\n"
+                f"  Precision={ev['precision']:.3f} Recall={ev['recall']:.3f}\n"
+                f"  TN={ev['tn']} FP={ev['fp']} FN={ev['fn']} TP={ev['tp']}\n"
+                f"  Crack anomaly rate={ev['crack_anomaly_rate']:.3f}"
+            )
+            self.auto_opt_text.insert(tk.END, msg + "\n")
+            self.auto_opt_text.see(tk.END)
+            messagebox.showinfo("PatchCore evaluate", msg)
+        except Exception as exc:
+            messagebox.showerror("Evaluate", str(exc))
+
+    def _get_feature_config(self) -> Any:
+        from motionanalyzer.auto_optimize import FeatureExtractionConfig
+
+        return FeatureExtractionConfig(
+            include_per_frame=self.include_per_frame_var.get(),
+            include_per_point=self.include_per_point_var.get(),
+            include_global_stats=self.include_global_stats_var.get(),
+            include_advanced_stats=self.include_advanced_stats_var.get(),
+            include_frequency_domain=self.include_frequency_domain_var.get(),
+            include_crack_risk_features=False,
+        )
+
+    def _on_run_analysis_threaded(self) -> None:
+        def worker() -> None:
+            try:
+                self._on_run_analysis()
+            except Exception as exc:
+                self.after(0, lambda: messagebox.showerror("Error", str(exc)))
+
+        threading.Thread(target=worker, daemon=True).start()
 
     def _clear_summary(self) -> None:
         self.summary_text.delete("1.0", tk.END)
@@ -663,43 +706,46 @@ For more information:
                     vectors_csv, fps_val, meters_per_pixel=summary.meters_per_pixel
                 )
 
-            # Optional: ML inference for anomaly scores
+            # ML inference (bundle manifest + paper feature pipeline)
             self._clear_anomaly_plot()
-            if mode in {"dream", "patchcore", "ensemble"} and vectors_csv.exists():
-                self._append_log(f"Running {mode} inference (requires a saved model)...")
-                features_df = self._build_inference_features(vectors_csv, input_dir / "frame_metrics.csv")
-                feature_cols = [c for c in features_df.columns if c != "frame" and "crack_risk" not in c.lower()]
-                X_df = features_df[feature_cols].fillna(0.0)
+            if mode in {"draem", "patchcore", "ensemble", "temporal"}:
+                if mode == "temporal":
+                    self._append_log("Temporal mode: train in ML tab; Analyze integration pending full manifest.")
+                else:
+                    from motionanalyzer.services.ml_inference import predict_bundle
 
-                if mode == "dream":
-                    model = self._load_dream_model()
-                    X = X_df.to_numpy(dtype=np.float32)
-                    scores = model.predict(X)
-                    preds = model.predict_binary(X)
-                elif mode == "patchcore":
-                    model = self._load_patchcore_model()
-                    scores = model.predict(X_df)
-                    preds = model.predict_binary(X_df)
-                else:  # ensemble
-                    ensemble = self._load_ensemble_model()
-                    scores = ensemble.predict(X_df)
-                    preds = ensemble.predict_binary(X_df)
-
-                frames = features_df["frame"].to_numpy(dtype=int)
-                scores = np.asarray(scores, dtype=float)
-                preds = np.asarray(preds, dtype=int)
-
-                scores_out = pd.DataFrame({"frame": frames, "anomaly_score": scores, "is_anomaly": preds})
-                scores_csv = output_dir / f"{mode}_anomaly_scores.csv"
-                scores_png = output_dir / f"{mode}_anomaly_scores.png"
-                scores_out.to_csv(scores_csv, index=False, encoding="utf-8")
-                self._show_anomaly_plot(frames=frames, scores=scores, out_path=scores_png)
-                self._append_log(
-                    f"{mode} inference complete.\n"
-                    f"  anomaly_rate={float(preds.mean()):.3f}\n"
-                    f"  scores_csv={scores_csv}\n"
-                    f"  plot_png={scores_png}"
-                )
+                    mf = get_bundle_manifest_path()
+                    if not mf.exists():
+                        raise FileNotFoundError(
+                            f"bundle_manifest.json not found in {get_user_models_dir()}.\n"
+                            "Train PatchCore/DRAEM in ML tab or run scripts/train_release_bundle.py."
+                        )
+                    self._append_log(f"Running {mode} inference (bundle manifest + CLI features)...")
+                    inf = predict_bundle(
+                        input_dir,
+                        mode,  # type: ignore[arg-type]
+                        dataset_level_max=self.dataset_level_max_var.get(),
+                    )
+                    per_row = inf.get("per_row")
+                    if per_row is not None and not per_row.empty:
+                        frames = per_row["frame"].to_numpy(dtype=int)
+                        scores = per_row["score"].to_numpy(dtype=float)
+                        preds = per_row["is_anomaly"].to_numpy(dtype=int)
+                    else:
+                        frames = np.array([0], dtype=int)
+                        scores = np.array([inf.get("dataset_score", 0.0)])
+                        preds = np.array([inf.get("dataset_is_anomaly", 0)])
+                    scores_csv = output_dir / f"{mode}_anomaly_scores.csv"
+                    scores_png = output_dir / f"{mode}_anomaly_scores.png"
+                    if per_row is not None:
+                        per_row.to_csv(scores_csv, index=False, encoding="utf-8")
+                    self._show_anomaly_plot(frames=frames, scores=scores, out_path=scores_png)
+                    self._append_log(
+                        f"{mode} inference complete.\n"
+                        f"  dataset_anomaly={inf.get('dataset_is_anomaly')}\n"
+                        f"  dataset_score={inf.get('dataset_score')}\n"
+                        f"  scores_csv={scores_csv}"
+                    )
 
             messagebox.showinfo(
                 "Success",
@@ -946,7 +992,7 @@ For more information:
             self.preview_text.see(tk.END)
 
     # --------------------------------------------------------------------- #
-    # ML & Optimization tab (model modes: physics, dream, patchcore, grid_search, bayesian)
+    # ML & Optimization tab (model modes: physics, draem, patchcore, grid_search, bayesian)
     # --------------------------------------------------------------------- #
     def _build_ml_optimization_tab(self, parent: tk.Widget) -> None:
         """Build ML & Optimization tab: select mode then train or optimize (runners dispatch)."""
@@ -982,13 +1028,49 @@ For more information:
         self.include_per_frame_var = tk.BooleanVar(value=True)
         self.include_per_point_var = tk.BooleanVar(value=False)
         self.include_global_stats_var = tk.BooleanVar(value=True)
-        self.include_advanced_stats_var = tk.BooleanVar(value=False)
-        self.include_frequency_domain_var = tk.BooleanVar(value=False)
+        self.include_advanced_stats_var = tk.BooleanVar(value=True)
+        self.include_frequency_domain_var = tk.BooleanVar(value=True)
+        self.manifest_path_var = tk.StringVar(value="")
         ttk.Checkbutton(feature_frame, text="Per-frame features", variable=self.include_per_frame_var).pack(side=tk.LEFT, padx=8)
         ttk.Checkbutton(feature_frame, text="Per-point features", variable=self.include_per_point_var).pack(side=tk.LEFT, padx=8)
         ttk.Checkbutton(feature_frame, text="Global statistics", variable=self.include_global_stats_var).pack(side=tk.LEFT, padx=8)
         ttk.Checkbutton(feature_frame, text="Advanced stats (skew/kurt/autocorr)", variable=self.include_advanced_stats_var).pack(side=tk.LEFT, padx=8)
         ttk.Checkbutton(feature_frame, text="Frequency domain (FFT)", variable=self.include_frequency_domain_var).pack(side=tk.LEFT, padx=8)
+        ttk.Button(feature_frame, text="Paper/CLI preset", command=self._apply_paper_feature_preset).pack(side=tk.LEFT, padx=8)
+
+        manifest_row = ttk.Frame(parent)
+        manifest_row.pack(fill=tk.X, padx=8, pady=2)
+        ttk.Label(manifest_row, text="ML manifest.json:").pack(side=tk.LEFT)
+        ttk.Entry(manifest_row, textvariable=self.manifest_path_var, width=60).pack(side=tk.LEFT, padx=4, fill=tk.X, expand=True)
+        ttk.Button(manifest_row, text="Browse...", command=self._browse_manifest).pack(side=tk.LEFT)
+        ttk.Button(manifest_row, text="Load manifest normals", command=self._load_manifest_normals_for_patchcore).pack(
+            side=tk.LEFT, padx=4
+        )
+
+        pc_frame = ttk.LabelFrame(parent, text="PatchCore training")
+        pc_frame.pack(fill=tk.X, padx=8, pady=4)
+        self.patchcore_train_mode_var = tk.StringVar(value="scratch")
+        ttk.Radiobutton(pc_frame, text="Train from scratch", variable=self.patchcore_train_mode_var, value="scratch").pack(
+            side=tk.LEFT, padx=8
+        )
+        ttk.Radiobutton(
+            pc_frame,
+            text="Refine pretrained (real normal)",
+            variable=self.patchcore_train_mode_var,
+            value="refine",
+        ).pack(side=tk.LEFT, padx=8)
+        pc_row = ttk.Frame(pc_frame)
+        pc_row.pack(fill=tk.X, padx=8, pady=2)
+        ttk.Label(pc_row, text="coreset:").pack(side=tk.LEFT)
+        self.patchcore_coreset_var = tk.StringVar(value="1000")
+        ttk.Entry(pc_row, textvariable=self.patchcore_coreset_var, width=8).pack(side=tk.LEFT, padx=2)
+        ttk.Label(pc_row, text="k:").pack(side=tk.LEFT)
+        self.patchcore_k_var = tk.StringVar(value="1")
+        ttk.Entry(pc_row, textvariable=self.patchcore_k_var, width=4).pack(side=tk.LEFT, padx=2)
+        ttk.Label(pc_row, text="thresh %:").pack(side=tk.LEFT)
+        self.patchcore_percentile_var = tk.StringVar(value="95")
+        ttk.Entry(pc_row, textvariable=self.patchcore_percentile_var, width=6).pack(side=tk.LEFT, padx=2)
+        ttk.Button(pc_row, text="Evaluate PatchCore", command=self._on_evaluate_patchcore).pack(side=tk.LEFT, padx=8)
 
         # Model / Optimization mode (single place; runners dispatch by mode)
         opt_frame = ttk.LabelFrame(parent, text="Model / Optimization mode")
@@ -996,10 +1078,10 @@ For more information:
         opt_inner = ttk.Frame(opt_frame)
         opt_inner.pack(fill=tk.X, padx=8, pady=4)
         ttk.Label(opt_inner, text="Mode:").pack(side=tk.LEFT)
-        self.opt_method_var = tk.StringVar(value="dream")
-        ttk.Radiobutton(opt_inner, text="DREAM (anomaly)", variable=self.opt_method_var, value="dream").pack(side=tk.LEFT, padx=4)
+        self.opt_method_var = tk.StringVar(value="draem")
+        ttk.Radiobutton(opt_inner, text="DRAEM (anomaly)", variable=self.opt_method_var, value="draem").pack(side=tk.LEFT, padx=4)
         ttk.Radiobutton(opt_inner, text="PatchCore (anomaly)", variable=self.opt_method_var, value="patchcore").pack(side=tk.LEFT, padx=4)
-        ttk.Radiobutton(opt_inner, text="Ensemble (DREAM+PatchCore)", variable=self.opt_method_var, value="ensemble").pack(side=tk.LEFT, padx=4)
+        ttk.Radiobutton(opt_inner, text="Ensemble (DRAEM+PatchCore)", variable=self.opt_method_var, value="ensemble").pack(side=tk.LEFT, padx=4)
         ttk.Radiobutton(opt_inner, text="Temporal (LSTM/GRU)", variable=self.opt_method_var, value="temporal").pack(side=tk.LEFT, padx=4)
         ttk.Radiobutton(opt_inner, text="Grid Search (params)", variable=self.opt_method_var, value="grid_search").pack(side=tk.LEFT, padx=4)
         ttk.Radiobutton(opt_inner, text="Bayesian (params)", variable=self.opt_method_var, value="bayesian").pack(side=tk.LEFT, padx=4)
@@ -1061,7 +1143,6 @@ For more information:
             from motionanalyzer.auto_optimize import (
                 prepare_training_data,
                 FeatureExtractionConfig,
-                normalize_features,
             )
             from motionanalyzer.crack_model import get_user_params_path, load_params
 
@@ -1079,36 +1160,34 @@ For more information:
             except (ValueError, FileNotFoundError):
                 crack_params = None
 
-            feature_config = FeatureExtractionConfig(
-                include_per_frame=self.include_per_frame_var.get(),
-                include_per_point=self.include_per_point_var.get(),
-                include_global_stats=self.include_global_stats_var.get(),
-                include_advanced_stats=self.include_advanced_stats_var.get(),
-                include_frequency_domain=self.include_frequency_domain_var.get(),
-                include_crack_risk_features=False,  # ML validation: exclude to avoid leakage
-            )
+            feature_config = self._get_feature_config()
+            self._feature_config = feature_config
 
+            cache_key = None
+            mp = self.manifest_path_var.get().strip()
+            if mp and Path(mp).exists():
+                import json
+
+                cache_key = json.loads(Path(mp).read_text(encoding="utf-8")).get("dataset_id", Path(mp).parent.name)
             features_df, labels = prepare_training_data(
                 normal_datasets=normal_paths_obj,
                 crack_datasets=crack_paths_obj,
                 crack_params=crack_params,
                 feature_config=feature_config,
+                cache_dir=get_artifacts_cache_dir(),
+                cache_key=cache_key or "gui_prepare",
             )
-
-            # Normalize features (fit on normal-only to avoid leakage)
-            normal_mask = labels == 0
-            fit_df = features_df.loc[normal_mask]
-            features_normalized = normalize_features(features_df, fit_df=fit_df)
 
             self.auto_opt_text.insert(tk.END, f"Data preparation complete.\n")
             self.auto_opt_text.insert(tk.END, f"Total samples: {len(features_df)}\n")
             self.auto_opt_text.insert(tk.END, f"Normal samples: {np.sum(labels == 0)}\n")
             self.auto_opt_text.insert(tk.END, f"Crack samples: {np.sum(labels == 1)}\n")
             self.auto_opt_text.insert(tk.END, f"Feature columns: {len([c for c in features_df.columns if c not in ['label', 'dataset_path', 'frame', 'index']])}\n")
+            self.auto_opt_text.insert(tk.END, "Note: normalization applied at train/inference via bundle_manifest.\n")
             self.auto_opt_text.see(tk.END)
 
-            # Store for optimization (and dataset paths for grid/bayesian)
-            self.training_features = features_normalized
+            # Store raw features; runners fit norm stats on normal-only (matches inference)
+            self.training_features = features_df
             self.training_labels = labels
             self.normal_dataset_paths = normal_paths_obj
             self.crack_dataset_paths = crack_paths_obj
@@ -1121,7 +1200,7 @@ For more information:
             messagebox.showerror("Error", f"Data preparation failed:\n{exc}")
 
     def _on_start_ml_or_optimization(self) -> None:
-        """Dispatch to runners by selected mode (dream, patchcore, grid_search, bayesian)."""
+        """Dispatch to runners by selected mode (draem, patchcore, grid_search, bayesian)."""
         if not hasattr(self, "training_features") or not hasattr(self, "training_labels"):
             messagebox.showerror("Error", "Please prepare training data first.")
             return
@@ -1147,17 +1226,26 @@ For more information:
                 "epochs": 50,
                 "batch_size": 32,
             }
+            opts["feature_config"] = getattr(self, "_feature_config", None) or self._get_feature_config()
             if mode == "ensemble":
-                # Ensemble requires pre-trained DREAM and PatchCore models
-                opts["dream_model_path"] = self.dream_model_path_var.get()
+                opts["draem_model_path"] = self.draem_model_path_var.get()
                 opts["patchcore_model_path"] = self.patchcore_model_path_var.get()
-                opts["strategy"] = "weighted_average"  # Can be made configurable
-                opts["optimize_weights"] = True
+                opts["strategy"] = "both_agree"
+                opts["optimize_weights"] = False
             if mode in ("grid_search", "bayesian") and hasattr(self, "normal_dataset_paths") and hasattr(self, "crack_dataset_paths"):
                 opts["normal_dataset_paths"] = getattr(self, "normal_dataset_paths", [])
                 opts["crack_dataset_paths"] = getattr(self, "crack_dataset_paths", [])
             if mode == "bayesian":
                 opts["n_trials"] = 20
+            if mode == "patchcore":
+                opts["train_mode"] = self.patchcore_train_mode_var.get()
+                opts["pretrained_path"] = self.patchcore_model_path_var.get()
+                opts["coreset_size"] = int(self.patchcore_coreset_var.get() or 1000)
+                opts["k_neighbors"] = int(self.patchcore_k_var.get() or 1)
+                opts["threshold_percentile"] = float(self.patchcore_percentile_var.get() or 95)
+                mp = self.manifest_path_var.get().strip()
+                if mp:
+                    opts["training_dataset_id"] = Path(mp).parent.name
             result = run_training_or_optimization(
                 mode,
                 self.training_features,
@@ -1674,7 +1762,8 @@ For more information:
     def _build_synthetic_goals_tab(self, parent: tk.Widget) -> None:
         """Build Synthetic Data & Goals tab: generate ML dataset, run goal evaluations."""
         root = _project_root()
-        base_dir = root / "data" / "synthetic" / "ml_dataset"
+        from motionanalyzer.paths import get_default_ml_dataset_dir
+        base_dir = get_default_ml_dataset_dir()
         reports_dir = root / "reports"
 
         # Synthetic data generation
@@ -1682,7 +1771,7 @@ For more information:
         synth_frame.pack(fill=tk.X, padx=8, pady=4)
         row1 = ttk.Frame(synth_frame)
         row1.pack(fill=tk.X, padx=8, pady=4)
-        ttk.Label(row1, text="Output: data/synthetic/ml_dataset/").pack(side=tk.LEFT)
+        ttk.Label(row1, text="Output: data/synthetic/ml_*_60f/ (see docs/DATASET_FOLDER_STRUCTURE.md)").pack(side=tk.LEFT)
         row2 = ttk.Frame(synth_frame)
         row2.pack(fill=tk.X, padx=8, pady=4)
         self.synthetic_small_var = tk.BooleanVar(value=False)
@@ -1733,7 +1822,8 @@ For more information:
             if result.stderr:
                 self._append_synthetic_log(result.stderr)
             if result.returncode == 0:
-                base_dir = _project_root() / "data" / "synthetic" / "ml_dataset"
+                from motionanalyzer.paths import get_default_ml_dataset_dir
+                base_dir = get_default_ml_dataset_dir()
                 messagebox.showinfo("Done", f"ML dataset generated at:\n{base_dir}")
             else:
                 messagebox.showerror("Error", "Synthetic data generation failed. Check output.")

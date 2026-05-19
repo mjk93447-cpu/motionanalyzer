@@ -1,7 +1,7 @@
 """
 Model-mode runners for ML & Optimization tab.
 
-Each mode (physics, dream, patchcore, grid_search, bayesian) is implemented
+Each mode (physics, draem, patchcore, grid_search, bayesian) is implemented
 in a single function. The GUI calls run_training_or_optimization(mode, ...)
 only; no model logic lives in the GUI. This keeps model code perfectly
 separated and testable.
@@ -16,7 +16,7 @@ import numpy as np
 import pandas as pd
 
 from motionanalyzer.paths import (
-    get_default_dream_model_path,
+    get_default_draem_model_path,
     get_default_patchcore_model_path,
     get_default_temporal_model_path,
     get_user_models_dir,
@@ -24,14 +24,39 @@ from motionanalyzer.paths import (
 
 # Mode identifiers; must match GUI radiobutton values
 MODE_PHYSICS = "physics"
-MODE_DREAM = "dream"
+MODE_DRAEM = "draem"
 MODE_PATCHCORE = "patchcore"
 MODE_ENSEMBLE = "ensemble"
 MODE_TEMPORAL = "temporal"
 MODE_GRID_SEARCH = "grid_search"
 MODE_BAYESIAN = "bayesian"
 
-ALL_MODES = [MODE_PHYSICS, MODE_DREAM, MODE_PATCHCORE, MODE_ENSEMBLE, MODE_TEMPORAL, MODE_GRID_SEARCH, MODE_BAYESIAN]
+ALL_MODES = [MODE_PHYSICS, MODE_DRAEM, MODE_PATCHCORE, MODE_ENSEMBLE, MODE_TEMPORAL, MODE_GRID_SEARCH, MODE_BAYESIAN]
+
+
+def _ml_feature_columns(features_df: pd.DataFrame) -> list[str]:
+    exclude_cols = ["label", "dataset_path", "frame", "index", "x", "y"]
+    return [
+        c for c in features_df.columns if c not in exclude_cols and "crack_risk" not in c.lower()
+    ]
+
+
+def _normalize_ml_features(
+    features_df: pd.DataFrame,
+    labels: np.ndarray,
+    feature_cols: list[str],
+) -> pd.DataFrame:
+    """Z-score fit on normal-only rows (same stats as bundle_manifest / inference)."""
+    from motionanalyzer.auto_optimize import apply_norm_stats, compute_norm_stats
+
+    normal_mask = labels == 0
+    fit_df = features_df.loc[normal_mask]
+    norm_stats = compute_norm_stats(fit_df)
+    out = features_df.copy()
+    transformed = apply_norm_stats(features_df, norm_stats, feature_cols)
+    for col in feature_cols:
+        out[col] = transformed[col]
+    return out.fillna(0.0)
 
 
 def run_training_or_optimization(
@@ -47,12 +72,12 @@ def run_training_or_optimization(
     Single entry point for ML training or parameter optimization.
 
     Args:
-        mode: One of physics, dream, patchcore, grid_search, bayesian.
+        mode: One of physics, draem, patchcore, grid_search, bayesian.
         features_df: Prepared (e.g. normalized) feature DataFrame.
         labels: 0 = normal, 1 = crack.
         log_callback: Optional callback for log lines (e.g. GUI text insert).
         progress_callback: Optional callback to update UI (e.g. self.update()).
-        **options: Mode-specific options (e.g. epochs, batch_size for DREAM).
+        **options: Mode-specific options (e.g. epochs, batch_size for DRAEM).
 
     Returns:
         Dict with at least: success (bool), message (str), and mode-specific keys
@@ -66,8 +91,8 @@ def run_training_or_optimization(
         if progress_callback:
             progress_callback()
 
-    if mode == MODE_DREAM:
-        return _run_dream(features_df, labels, log=log, progress=progress, **options)
+    if mode == MODE_DRAEM:
+        return _run_draem(features_df, labels, log=log, progress=progress, **options)
     if mode == MODE_PATCHCORE:
         return _run_patchcore(features_df, labels, log=log, progress=progress, **options)
     if mode == MODE_ENSEMBLE:
@@ -84,7 +109,7 @@ def run_training_or_optimization(
     return {"success": False, "message": f"Unknown mode: {mode}"}
 
 
-def _run_dream(
+def _run_draem(
     features_df: pd.DataFrame,
     labels: np.ndarray,
     *,
@@ -95,28 +120,24 @@ def _run_dream(
     model_save_dir: Path | None = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
-    """Train DREAM model (normal-only); evaluate on crack if present."""
+    """Train DRAEM model (normal-only); evaluate on crack if present."""
     try:
-        from motionanalyzer.ml_models.dream import DREAMAnomalyDetector
+        from motionanalyzer.ml_models.draem import DRAEMAnomalyDetector
     except ImportError:
         return {
             "success": False,
             "message": "PyTorch not installed. Install with: pip install torch or pip install -e '.[ml]'",
         }
 
-    exclude_cols = ["label", "dataset_path", "frame", "index", "x", "y"]
-    # Avoid Physics-derived crack_risk features for ML anomaly detection (leakage/circularity)
-    feature_cols = [
-        c for c in features_df.columns if c not in exclude_cols and "crack_risk" not in c.lower()
-    ]
+    feature_cols = _ml_feature_columns(features_df)
     normal_mask = labels == 0
-    normal_data = features_df.loc[normal_mask, feature_cols]
-    normal_array = normal_data.to_numpy(dtype=np.float32)
+    normed_df = _normalize_ml_features(features_df, labels, feature_cols)
+    normal_array = normed_df.loc[normal_mask, feature_cols].to_numpy(dtype=np.float32)
 
-    log(f"Training DREAM on {len(normal_array)} normal samples (crack-like synthetic anomalies enabled)...")
+    log(f"Training DRAEM on {len(normal_array)} normal samples (crack-like synthetic anomalies enabled)...")
     progress()
 
-    model = DREAMAnomalyDetector(
+    model = DRAEMAnomalyDetector(
         input_dim=len(feature_cols),
         hidden_dims=kwargs.get("hidden_dims", [64, 32, 16]),
         latent_dim=kwargs.get("latent_dim", 8),
@@ -127,41 +148,63 @@ def _run_dream(
         discriminator_weight=kwargs.get("discriminator_weight", 0.5),
         weight_decay=kwargs.get("weight_decay", 1e-5),
     )
-    model.fit(normal_data, epochs=epochs, feature_names=feature_cols)
+    model.fit(normal_array, epochs=epochs, feature_names=feature_cols)
 
     # Threshold optimization: use optimize_threshold_for_precision_recall if crack data available
     crack_mask = ~normal_mask
     if crack_mask.any() and kwargs.get("optimize_threshold", True):
-        crack_data = features_df.loc[crack_mask, feature_cols]
+        crack_data = normed_df.loc[crack_mask, feature_cols]
         try:
             thresh, metrics = model.optimize_threshold_for_precision_recall(
-                normal_data,
+                normed_df.loc[normal_mask, feature_cols],
                 crack_data,
                 target_metric=kwargs.get("threshold_metric", "balanced"),
             )
             log(f"Optimized threshold: {thresh:.4f} (Precision: {metrics['precision']:.3f}, Recall: {metrics['recall']:.3f}, F1: {metrics['f1']:.3f})")
         except Exception as e:
             log(f"Threshold optimization failed, using p95: {e}")
-            model.set_threshold_from_normal(normal_data, percentile=kwargs.get("threshold_percentile", 95.0))
+            model.set_threshold_from_normal(
+                normed_df.loc[normal_mask, feature_cols],
+                percentile=kwargs.get("threshold_percentile", 95.0),
+            )
     else:
-        model.set_threshold_from_normal(normal_data, percentile=kwargs.get("threshold_percentile", 95.0))
+        model.set_threshold_from_normal(
+            normed_df.loc[normal_mask, feature_cols],
+            percentile=kwargs.get("threshold_percentile", 95.0),
+        )
 
     save_dir = Path(model_save_dir) if model_save_dir is not None else get_user_models_dir()
     save_dir.mkdir(parents=True, exist_ok=True)
-    model_path = get_default_dream_model_path() if model_save_dir is None else (save_dir / "dream_model.pt")
+    model_path = get_default_draem_model_path() if model_save_dir is None else (save_dir / "draem_model.pt")
     model.save(model_path)
     log(f"Model saved to: {model_path}")
 
-    result: dict[str, Any] = {"success": True, "message": "DREAM training complete", "model_path": model_path}
+    result: dict[str, Any] = {"success": True, "message": "DRAEM training complete", "model_path": model_path}
 
     if crack_mask.any():
-        crack_data = features_df.loc[crack_mask, feature_cols]
-        crack_array = crack_data.to_numpy(dtype=np.float32)
+        crack_array = normed_df.loc[crack_mask, feature_cols].to_numpy(dtype=np.float32)
         crack_scores = model.predict(crack_array)
         crack_pred = model.predict_binary(crack_array)
         result["crack_anomaly_rate"] = float(crack_pred.mean())
         result["crack_mean_score"] = float(crack_scores.mean())
         log(f"Evaluation on {len(crack_array)} crack samples: anomaly rate = {result['crack_anomaly_rate']:.3f}")
+
+    try:
+        from motionanalyzer.auto_optimize import PAPER_FEATURE_CONFIG
+        from motionanalyzer.ml_bundle import save_model_bundle
+
+        fc = kwargs.get("feature_config", PAPER_FEATURE_CONFIG)
+        save_model_bundle(
+            save_dir,
+            feature_config=fc,
+            features_df=features_df,
+            labels=labels,
+            draem_threshold=float(model.reconstruction_error_threshold or 0.0),
+            ensemble_strategy="both_agree",
+        )
+        log(f"Updated bundle manifest in {save_dir}")
+    except Exception as exc:
+        log(f"Warning: could not save bundle manifest: {exc}")
 
     return result
 
@@ -175,7 +218,7 @@ def _run_patchcore(
     model_save_dir: Path | None = None,
     **kwargs: Any,
 ) -> dict[str, Any]:
-    """Train PatchCore (memory bank from normal data); evaluate on crack if present."""
+    """Train or refine PatchCore on normal-only memory bank; evaluate crack if present."""
     try:
         from motionanalyzer.ml_models.patchcore import PatchCoreScikitLearn
     except ImportError:
@@ -184,13 +227,10 @@ def _run_patchcore(
             "message": "PatchCore requires scikit-learn. Install with: pip install -e '.[ml]'",
         }
 
-    exclude_cols = ["label", "dataset_path", "frame", "index", "x", "y"]
-    # Avoid Physics-derived crack_risk features for ML anomaly detection (leakage/circularity)
-    feature_cols = [
-        c for c in features_df.columns if c not in exclude_cols and "crack_risk" not in c.lower()
-    ]
+    feature_cols = _ml_feature_columns(features_df)
     normal_mask = labels == 0
-    normal_df = features_df.loc[normal_mask, feature_cols]
+    normed_df = _normalize_ml_features(features_df, labels, feature_cols)
+    normal_df = normed_df.loc[normal_mask, feature_cols]
 
     if len(normal_df) < 2:
         return {"success": False, "message": "PatchCore requires at least 2 normal samples."}
@@ -199,17 +239,8 @@ def _run_patchcore(
     coreset_size = int(kwargs.get("coreset_size", 1000))
     k_neighbors = int(kwargs.get("k_neighbors", 1))
     percentile = float(kwargs.get("threshold_percentile", 95.0))
-
-    log(f"Training PatchCore on {len(normal_df)} normal samples (coreset_size={coreset_size}, k={k_neighbors})...")
-    progress()
-
-    model = PatchCoreScikitLearn(
-        feature_dim=feature_dim,
-        coreset_size=min(coreset_size, len(normal_df)),
-        k_neighbors=min(k_neighbors, len(normal_df)),
-    )
-    model.fit(normal_df)
-    model.set_threshold_from_normal(normal_df, percentile=percentile)
+    train_mode = str(kwargs.get("train_mode", "scratch")).lower()
+    pretrained_path = kwargs.get("pretrained_path")
 
     save_dir = Path(model_save_dir) if model_save_dir is not None else get_user_models_dir()
     save_dir.mkdir(parents=True, exist_ok=True)
@@ -218,25 +249,125 @@ def _run_patchcore(
         if model_save_dir is None
         else (save_dir / "patchcore_model.npz")
     )
+
+    if train_mode == "refine":
+        load_path = Path(pretrained_path) if pretrained_path else model_path
+        if not load_path.exists():
+            return {
+                "success": False,
+                "message": f"Pretrained PatchCore not found: {load_path}\nTrain scratch first or set pretrained path.",
+            }
+        log(f"Refining PatchCore from {load_path} with {len(normal_df)} new normal samples...")
+        progress()
+        model = PatchCoreScikitLearn(feature_dim=feature_dim, coreset_size=coreset_size, k_neighbors=k_neighbors)
+        model.load(load_path)
+        if model.feature_dim != feature_dim:
+            return {
+                "success": False,
+                "message": (
+                    f"Feature dimension mismatch: pretrained={model.feature_dim}, data={feature_dim}. "
+                    "Use Paper/CLI preset and the same manifest feature_cols."
+                ),
+            }
+        source_tag = str(kwargs.get("source_tag", "real_normal_refine"))
+        model.fit_incremental(normal_df, source_tag=source_tag)
+        model.refit_threshold(normal_df, percentile=percentile)
+        msg = "PatchCore refine complete"
+    else:
+        log(f"Training PatchCore scratch on {len(normal_df)} normal samples (coreset={coreset_size}, k={k_neighbors})...")
+        progress()
+        model = PatchCoreScikitLearn(
+            feature_dim=feature_dim,
+            coreset_size=min(coreset_size, len(normal_df)),
+            k_neighbors=min(k_neighbors, len(normal_df)),
+        )
+        model.fit(normal_df)
+        model.set_threshold_from_normal(normal_df, percentile=percentile)
+        msg = "PatchCore training complete"
+
     model.save(model_path)
-    log(f"Model saved to: {model_path}")
+    log(f"Model saved to: {model_path} (bank size={model.n_bank_samples})")
 
     result: dict[str, Any] = {
         "success": True,
-        "message": "PatchCore training complete",
+        "message": msg,
         "model_path": model_path,
+        "patchcore_n_bank_samples": model.n_bank_samples,
+        "patchcore_training_sources": list(model.training_sources),
     }
 
     crack_mask = ~normal_mask
     if crack_mask.any():
-        crack_df = features_df.loc[crack_mask, feature_cols]
+        crack_df = normed_df.loc[crack_mask, feature_cols]
         crack_scores = model.predict(crack_df)
         crack_pred = model.predict_binary(crack_df)
         result["crack_anomaly_rate"] = float(crack_pred.mean())
         result["crack_mean_score"] = float(crack_scores.mean())
         log(f"Evaluation on {len(crack_df)} crack samples: anomaly rate = {result['crack_anomaly_rate']:.3f}")
 
+    try:
+        from motionanalyzer.auto_optimize import PAPER_FEATURE_CONFIG
+        from motionanalyzer.ml_bundle import get_bundle_manifest_path, save_model_bundle
+        import json
+
+        fc = kwargs.get("feature_config", PAPER_FEATURE_CONFIG)
+        manifest_path = get_bundle_manifest_path(save_dir)
+        pc_thr = float(model.anomaly_threshold or 0.0)
+        draem_thr = None
+        if manifest_path.exists():
+            existing = json.loads(manifest_path.read_text(encoding="utf-8"))
+            draem_thr = existing.get("draem_threshold")
+        save_model_bundle(
+            save_dir,
+            feature_config=fc,
+            features_df=features_df,
+            labels=labels,
+            draem_threshold=draem_thr,
+            patchcore_threshold=pc_thr,
+            ensemble_strategy="both_agree",
+            training_dataset_id=str(kwargs.get("training_dataset_id", "")),
+            patchcore_n_bank_samples=model.n_bank_samples,
+            patchcore_training_sources=list(model.training_sources),
+        )
+        log(f"Updated bundle manifest in {save_dir}")
+    except Exception as exc:
+        log(f"Warning: could not save bundle manifest: {exc}")
+
     return result
+
+
+def evaluate_patchcore_on_prepared(
+    features_df: pd.DataFrame,
+    labels: np.ndarray,
+    model_path: Path | str | None = None,
+    *,
+    threshold: float | None = None,
+) -> dict[str, Any]:
+    """Confusion-style metrics for prepared feature matrix (GUI Evaluate)."""
+    from motionanalyzer.ml_models.patchcore import PatchCoreScikitLearn
+    from sklearn.metrics import confusion_matrix, precision_score, recall_score
+
+    feature_cols = _ml_feature_columns(features_df)
+    normed_df = _normalize_ml_features(features_df, labels, feature_cols)
+    path = Path(model_path or get_default_patchcore_model_path())
+    model = PatchCoreScikitLearn(feature_dim=len(feature_cols))
+    model.load(path)
+    X = normed_df[feature_cols].fillna(0.0)
+    scores = model.predict(X)
+    t = threshold if threshold is not None else model.anomaly_threshold
+    preds = model.predict_binary(X, threshold=t)
+    y_true = np.asarray(labels, dtype=int)
+    cm = confusion_matrix(y_true, preds, labels=[0, 1])
+    return {
+        "precision": float(precision_score(y_true, preds, zero_division=0)),
+        "recall": float(recall_score(y_true, preds, zero_division=0)),
+        "confusion_matrix": cm.tolist(),
+        "tn": int(cm[0, 0]),
+        "fp": int(cm[0, 1]),
+        "fn": int(cm[1, 0]),
+        "tp": int(cm[1, 1]),
+        "crack_anomaly_rate": float(preds[y_true == 1].mean()) if (y_true == 1).any() else 0.0,
+    }
 
 
 def _run_ensemble(
@@ -245,7 +376,7 @@ def _run_ensemble(
     *,
     log: Callable[[str], None],
     progress: Callable[[], None],
-    dream_model_path: Path | str | None = None,
+    draem_model_path: Path | str | None = None,
     patchcore_model_path: Path | str | None = None,
     strategy: str = "weighted_average",
     optimize_weights: bool = True,
@@ -253,13 +384,13 @@ def _run_ensemble(
     **kwargs: Any,
 ) -> dict[str, Any]:
     """
-    Train ensemble model combining DREAM and PatchCore.
+    Train ensemble model combining DRAEM and PatchCore.
 
-    Requires pre-trained DREAM and PatchCore models. Loads them and combines predictions.
+    Requires pre-trained DRAEM and PatchCore models. Loads them and combines predictions.
     """
     try:
         from motionanalyzer.ml_models.hybrid import EnsembleAnomalyDetector, EnsembleStrategy
-        from motionanalyzer.ml_models.dream import DREAMPyTorch
+        from motionanalyzer.ml_models.draem import DRAEMPyTorch
         from motionanalyzer.ml_models.patchcore import PatchCoreScikitLearn
     except ImportError as e:
         return {
@@ -268,13 +399,13 @@ def _run_ensemble(
         }
 
     # Load base models
-    dream_path = Path(dream_model_path) if dream_model_path else get_default_dream_model_path()
+    draem_path = Path(draem_model_path) if draem_model_path else get_default_draem_model_path()
     patchcore_path = Path(patchcore_model_path) if patchcore_model_path else get_default_patchcore_model_path()
 
-    if not dream_path.exists():
+    if not draem_path.exists():
         return {
             "success": False,
-            "message": f"DREAM model not found: {dream_path}\nTrain DREAM model first.",
+            "message": f"DRAEM model not found: {draem_path}\nTrain DRAEM model first.",
         }
     if not patchcore_path.exists():
         return {
@@ -282,27 +413,30 @@ def _run_ensemble(
             "message": f"PatchCore model not found: {patchcore_path}\nTrain PatchCore model first.",
         }
 
-    log(f"Loading DREAM model from: {dream_path}")
-    dream_model = DREAMPyTorch(input_dim=1)  # Will be set correctly after load
-    dream_model.load(dream_path)
+    log(f"Loading DRAEM model from: {draem_path}")
+    draem_model = DRAEMPyTorch(input_dim=1)  # Will be set correctly after load
+    draem_model.load(draem_path)
 
     log(f"Loading PatchCore model from: {patchcore_path}")
     patchcore_model = PatchCoreScikitLearn(feature_dim=1)  # Will be set correctly after load
     patchcore_model.load(patchcore_path)
 
     # Determine strategy
-    try:
-        ensemble_strategy = EnsembleStrategy(strategy)
-    except ValueError:
-        ensemble_strategy = EnsembleStrategy.WEIGHTED_AVERAGE
-        log(f"Unknown strategy '{strategy}', using weighted_average")
+    if strategy in ("both_agree", "paper"):
+        ensemble_strategy = EnsembleStrategy.BOTH_AGREE
+    else:
+        try:
+            ensemble_strategy = EnsembleStrategy(strategy)
+        except ValueError:
+            ensemble_strategy = EnsembleStrategy.BOTH_AGREE
+            log(f"Unknown strategy '{strategy}', using both_agree")
 
     # Create ensemble
     ensemble = EnsembleAnomalyDetector(
-        dream_model=dream_model,
+        draem_model=draem_model,
         patchcore_model=patchcore_model,
         strategy=ensemble_strategy,
-        dream_weight=0.5,
+        draem_weight=0.5,
         patchcore_weight=0.5,
     )
 
@@ -324,10 +458,10 @@ def _run_ensemble(
     # Optimize weights if requested and strategy is weighted_average
     if optimize_weights and ensemble_strategy == EnsembleStrategy.WEIGHTED_AVERAGE and len(crack_features) > 0:
         log("Optimizing ensemble weights...")
-        dream_weight, patchcore_weight, best_metrics = ensemble.optimize_weights(
+        draem_weight, patchcore_weight, best_metrics = ensemble.optimize_weights(
             normal_features, crack_features, target_metric="balanced"
         )
-        log(f"Optimal weights: DREAM={dream_weight:.3f}, PatchCore={patchcore_weight:.3f}")
+        log(f"Optimal weights: DRAEM={draem_weight:.3f}, PatchCore={patchcore_weight:.3f}")
         log(f"Best metrics: {best_metrics}")
 
     # Set threshold
@@ -340,7 +474,7 @@ def _run_ensemble(
         "success": True,
         "message": f"Ensemble ({ensemble_strategy.value}) ready",
         "strategy": ensemble_strategy.value,
-        "dream_weight": ensemble.dream_weight,
+        "draem_weight": ensemble.draem_weight,
         "patchcore_weight": ensemble.patchcore_weight,
         "ensemble_threshold": ensemble.ensemble_threshold,
     }
@@ -462,7 +596,7 @@ def _run_temporal(
 ) -> dict[str, Any]:
     """Train temporal LSTM/GRU autoencoder model (normal-only); evaluate on crack if present."""
     try:
-        from motionanalyzer.ml_models.dream_temporal import TemporalAnomalyDetector
+        from motionanalyzer.ml_models.draem_temporal import TemporalAnomalyDetector
     except ImportError:
         return {
             "success": False,

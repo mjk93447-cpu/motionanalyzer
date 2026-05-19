@@ -1,0 +1,14 @@
+{
+  "bundle_id": "balanced_pretrain_v1",
+  "training_dataset_id": "ml_pretrain_balanced_3k_60f",
+  "split_ratios": [0.7, 0.2, 0.1],
+  "target_metrics": { "precision": 0.9, "recall": 0.7 },
+  "ensemble_strategy": "both_agree",
+  "artifacts": [
+    "draem_model.pt",
+    "patchcore_model.npz",
+    "bundle_manifest.json"
+  ],
+  "metrics_report": "reports/balanced_pretrain_metrics.json",
+  "refine_on_real_data": "GUI ML tab → Refine pretrained (real normal); no outbound data transfer required"
+}
