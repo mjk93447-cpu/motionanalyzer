@@ -18,9 +18,11 @@ if (-not $SourceDir) {
     }
 }
 
-$src = Resolve-Path $SourceDir -ErrorAction Stop
+$src = (Resolve-Path $SourceDir -ErrorAction Stop).Path.TrimEnd('\')
 $releaseModels = Join-Path $root "release\models"
 New-Item -ItemType Directory -Force -Path $releaseModels | Out-Null
+$releaseResolved = (Resolve-Path $releaseModels).Path.TrimEnd('\')
+$sameDir = ($src -ieq $releaseResolved)
 
 $names = @(
     "draem_model.pt",
@@ -28,19 +30,24 @@ $names = @(
     "bundle_manifest.json",
     "ensemble_config.json"
 )
-foreach ($n in $names) {
-    $f = Join-Path $src $n
-    if (Test-Path $f) {
-        Copy-Item -Force $f (Join-Path $releaseModels $n)
-        Write-Host "Copied $n"
-    } else {
-        Write-Host "Skip (missing): $n"
+if (-not $sameDir) {
+    foreach ($n in $names) {
+        $f = Join-Path $src $n
+        if (Test-Path $f) {
+            Copy-Item -Force $f (Join-Path $releaseModels $n)
+            Write-Host "Copied $n"
+        } else {
+            Write-Host "Skip (missing): $n"
+        }
     }
+} else {
+    Write-Host "Source is release/models; skipping self-copy"
 }
 
+$zipSource = if ($sameDir) { $src } else { $releaseResolved }
 $distDir = Join-Path $root "dist"
 New-Item -ItemType Directory -Force -Path $distDir | Out-Null
 if (Test-Path $OutZip) { Remove-Item -Force $OutZip }
-Compress-Archive -Path (Join-Path $releaseModels "*") -DestinationPath $OutZip -Force
+Compress-Archive -Path (Join-Path $zipSource "*") -DestinationPath $OutZip -Force
 Write-Host "Release bundle: $OutZip"
-Write-Host "Also staged under: $releaseModels"
+Write-Host "Models dir: $zipSource"
