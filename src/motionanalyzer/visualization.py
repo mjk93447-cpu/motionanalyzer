@@ -114,216 +114,26 @@ def plot_full_vector_map(
     velocity_alpha: float = 0.7,
     acceleration_alpha: float = 0.28,
 ) -> Path:
-    """
-    Plot velocity and acceleration vectors on a 2D graph with units and impact analysis.
-
-    Visualization strategy so acceleration does not obscure velocity:
-    - Draw order: points → acceleration (bottom) → velocity (top). Velocity is always on top.
-    - Acceleration: shorter scale, thinner line, lower alpha so it stays in the background.
-    - Alternative ideas: two-panel (velocity-only / acceleration-only), or color velocity by |a|.
-    """
-    df = pd.read_csv(vectors_csv)
-
-    for col in ("x", "y", "index", "vx", "vy", "ax", "ay", "acceleration", "curvature_like"):
-        if col not in df.columns:
-            raise ValueError(f"vectors.csv must contain '{col}'")
-
-    use_si = (
-        meters_per_pixel is not None
-        and meters_per_pixel > 0
-        and "acceleration_si" in df.columns
+    """Save a single-panel vector map using the same rules as the GUI figure."""
+    fig = create_full_vector_map_figure(
+        vectors_csv,
+        fps,
+        meters_per_pixel=meters_per_pixel,
+        figsize=figsize,
+        dpi=dpi,
+        point_size=point_size,
+        point_alpha=point_alpha,
+        point_edge_width=point_edge_width,
+        velocity_scale=velocity_scale,
+        velocity_linewidth=velocity_linewidth,
+        acceleration_scale=acceleration_scale,
+        acceleration_linewidth=acceleration_linewidth,
+        velocity_alpha=velocity_alpha,
+        acceleration_alpha=acceleration_alpha,
     )
-    vel_unit = "m/s" if use_si else "px/s"
-    # Acceleration in km/s² when SI: shorter display length (values 1000× smaller) and clear unit
-    acc_unit = "km/s²" if use_si else "px/s²"
-
-    dt_s = 1.0 / fps
-    # Velocity arrow length = actual displacement per frame (v*dt) so tip connects to same index in next frame
-    if velocity_scale is None:
-        velocity_scale = dt_s
-    # When SI, draw acceleration in km/s² scale so arrows are shorter (1/1000 of m/s² scale)
-    acc_scale_draw = acceleration_scale / 1000.0 if use_si else acceleration_scale
-
-    m_per_px = float(meters_per_pixel) if use_si else 1.0
-    x = df["x"].to_numpy(np.float64)
-    y = df["y"].to_numpy(np.float64)
-    vx = df["vx"].to_numpy(np.float64)
-    vy = df["vy"].to_numpy(np.float64)
-    ax_arr = df["ax"].to_numpy(np.float64)
-    ay_arr = df["ay"].to_numpy(np.float64)
-    y, vy, ay_arr = _flip_y_for_image_coords(y, vy, ay_arr)
-    if use_si:
-        x = x * m_per_px
-        y = y * m_per_px
-        velocity_scale = velocity_scale * m_per_px
-        acc_scale_draw = acc_scale_draw * m_per_px
-
-    fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
-    ax.set_aspect("equal", adjustable="box")
-
-    # --- 1) Points (x, y) colored by index (drawn first, clearly visible) ---
-    unique_indices = np.sort(df["index"].unique())
-    index_colors = _index_color_map(unique_indices)
-    index_complement_colors = {i: _complement_rgba(index_colors[i]) for i in unique_indices}
-    colors = np.array([index_colors[i] for i in df["index"]])
-    ax.scatter(
-        x,
-        y,
-        s=point_size,
-        c=colors,
-        alpha=point_alpha,
-        edgecolors="white",
-        linewidths=point_edge_width,
-    )
-
-    # --- 2) Acceleration first (bottom layer): short, faint, thin so velocity stays clear ---
-    tax = x + ax_arr * acc_scale_draw
-    tay = y + ay_arr * acc_scale_draw
-    a_angle = np.arctan2(ay_arr, ax_arr)
-    a_body_len = np.hypot(ax_arr * acc_scale_draw, ay_arr * acc_scale_draw)
-    a_head_len = np.where(a_body_len > 1e-6, a_body_len * 0.22, 0.0)
-    al_a, ar_a = a_angle + np.pi - 0.38, a_angle + np.pi + 0.38
-    lax = tax + a_head_len * np.cos(al_a)
-    lay = tay + a_head_len * np.sin(al_a)
-    rax = tax + a_head_len * np.cos(ar_a)
-    ray = tay + a_head_len * np.sin(ar_a)
-    acc_segments = np.array([
-        np.stack([np.stack([x, y], axis=1), np.stack([tax, tay], axis=1)], axis=0),
-        np.stack([np.stack([tax, tay], axis=1), np.stack([lax, lay], axis=1)], axis=0),
-        np.stack([np.stack([tax, tay], axis=1), np.stack([rax, ray], axis=1)], axis=0),
-    ])
-    acc_segments = np.transpose(acc_segments, (0, 2, 1, 3)).reshape(-1, 2, 2)
-    acc_colors = np.array([index_complement_colors[i] for i in df["index"] for _ in range(3)])
-    lc_acc = LineCollection(
-        acc_segments,
-        colors=acc_colors,
-        linewidths=acceleration_linewidth,
-        alpha=acceleration_alpha,
-        capstyle="round",
-    )
-    ax.add_collection(lc_acc)
-
-    # --- 3) Velocity on top (drawn last so it is never covered by acceleration) ---
-    tx = x + vx * velocity_scale
-    ty = y + vy * velocity_scale
-    angle = np.arctan2(vy, vx)
-    body_len = np.hypot(vx * velocity_scale, vy * velocity_scale)
-    head_len = np.where(body_len > 1e-6, body_len * 0.22, 0.0)
-    al, ar = angle + np.pi - 0.38, angle + np.pi + 0.38
-    lx = tx + head_len * np.cos(al)
-    ly = ty + head_len * np.sin(al)
-    rx = tx + head_len * np.cos(ar)
-    ry = ty + head_len * np.sin(ar)
-    vel_segments = np.array([
-        np.stack([np.stack([x, y], axis=1), np.stack([tx, ty], axis=1)], axis=0),
-        np.stack([np.stack([tx, ty], axis=1), np.stack([lx, ly], axis=1)], axis=0),
-        np.stack([np.stack([tx, ty], axis=1), np.stack([rx, ry], axis=1)], axis=0),
-    ])
-    n_pts = len(df)
-    vel_segments = np.transpose(vel_segments, (0, 2, 1, 3)).reshape(-1, 2, 2)
-    vel_colors = np.array([index_colors[i] for i in df["index"] for _ in range(3)])
-    lc_vel = LineCollection(
-        vel_segments,
-        colors=vel_colors,
-        linewidths=velocity_linewidth,
-        alpha=velocity_alpha,
-        capstyle="round",
-    )
-    ax.add_collection(lc_vel)
-
-    # --- Crack risk: physics model if available, else heuristic at max acceleration ---
-    if "crack_risk" in df.columns:
-        risk_row = df.loc[df["crack_risk"].idxmax()]
-        ann_x = float(risk_row["x"]) * m_per_px
-        ann_y = -float(risk_row["y"]) * m_per_px
-        crack_prob = float(risk_row["crack_risk"])
-        label_suffix = " (physics)"
-    else:
-        risk_row = df.loc[df["acceleration"].idxmax()]
-        ann_x = float(risk_row["x"]) * m_per_px
-        ann_y = -float(risk_row["y"]) * m_per_px
-        max_acc = float(risk_row["acceleration"])
-        max_curv = float(df["curvature_like"].max())
-        crack_prob = _crack_probability_heuristic(
-            max_acc,
-            float(df["acceleration"].max()),
-            float(risk_row["curvature_like"]),
-            max_curv,
-        )
-        label_suffix = ""
-
-    accel_label = (
-        f"{float(risk_row['acceleration_si']) / 1000.0:.6f} {acc_unit}"
-        if use_si and "acceleration_si" in risk_row.index
-        else f"{float(risk_row['acceleration']):.1f} {acc_unit}"
-    )
-    offset = 30 * m_per_px  # offset in data coords (px or m)
-    ax.annotate(
-        f"max crack risk point\naccel={accel_label}\nP(crack)={crack_prob:.3f}{label_suffix}",
-        xy=(ann_x, ann_y),
-        xytext=(ann_x + offset, ann_y + offset),
-        fontsize=8,
-        color="#8b0000",
-        arrowprops=dict(arrowstyle="->", color="#8b0000", lw=1),
-    )
-    ax.plot(ann_x, ann_y, "o", markersize=4, color="#8b0000", alpha=0.9)
-
-    # --- Units and title ---
-    ax.set_xlabel("X (m)" if use_si else "X (px)", fontsize=12)
-    ax.set_ylabel("Y (m)" if use_si else "Y (px)", fontsize=12)
-    n_frames = int(df["frame"].nunique())
-    n_points = int(df["index"].nunique())
-    scale_note = f" | scale={meters_per_pixel:.2e} m/px" if use_si and meters_per_pixel else ""
-    ax.set_title(
-        f"Vector Map: points & arrows by index — one color per index\n"
-        f"velocity ({vel_unit}) & acceleration ({acc_unit}){scale_note} | "
-        f"{n_frames} frames, {n_points} points | FPS={fps:.1f}",
-        fontsize=12,
-    )
-    ax.grid(True, alpha=0.25, linestyle="--")
-
-    # Legend: points by index, velocity (same color as index), acceleration (complement)
-    from matplotlib.lines import Line2D
-
-    sample_color = index_colors[unique_indices[0]]
-    sample_complement = index_complement_colors[unique_indices[0]]
-    legend_elements = [
-        Line2D(
-            [0],
-            [0],
-            marker="o",
-            color="w",
-            markerfacecolor=sample_color,
-            markeredgecolor="white",
-            markersize=7,
-            label=f"points (x,y) by index [{n_frames} frames, {n_points} points]",
-        ),
-        Line2D(
-            [0],
-            [0],
-            marker="o",
-            color="w",
-            markerfacecolor=sample_color,
-            markersize=8,
-            label=f"velocity ({vel_unit}) — index color",
-        ),
-        Line2D(
-            [0],
-            [0],
-            marker="o",
-            color="w",
-            markerfacecolor=sample_complement,
-            markersize=8,
-            label=f"acceleration ({acc_unit}) — complement",
-        ),
-    ]
-    ax.legend(handles=legend_elements, loc="upper right", fontsize=10)
-
-    plt.tight_layout()
     output_image = Path(output_image)
     output_image.parent.mkdir(parents=True, exist_ok=True)
-    plt.savefig(output_image, dpi=dpi, bbox_inches="tight")
-    plt.close()
+    fig.savefig(output_image, dpi=dpi, bbox_inches="tight")
     return output_image
 
 
@@ -356,32 +166,51 @@ def create_full_vector_map_figure(
         if col not in df.columns:
             raise ValueError(f"vectors.csv must contain '{col}'")
 
-    use_si = (
-        meters_per_pixel is not None
-        and meters_per_pixel > 0
-        and "acceleration_si" in df.columns
+    from motionanalyzer.vector_map_viz import (
+        motion_field_names,
+        normalized_quiver_components,
+        p98_positive,
+        use_si_columns,
     )
-    vel_unit = "m/s" if use_si else "px/s"
-    acc_unit = "km/s²" if use_si else "px/s²"
 
-    dt_s = 1.0 / fps
-    if velocity_scale is None:
-        velocity_scale = dt_s
-    acc_scale_draw = acceleration_scale / 1000.0 if use_si else acceleration_scale
+    use_si = use_si_columns(df, meters_per_pixel)
+    fields = motion_field_names(use_si)
+    vel_unit = fields["speed_unit"]
+    acc_unit = fields["accel_unit"]
+
+    if "dt_s" in df.columns:
+        dt_s = float(df["dt_s"].median())
+    else:
+        dt_s = 1.0 / fps
+    if dt_s <= 0:
+        dt_s = 1.0 / fps
 
     m_per_px = float(meters_per_pixel) if use_si else 1.0
     x = df["x"].to_numpy(np.float64)
     y = df["y"].to_numpy(np.float64)
-    vx = df["vx"].to_numpy(np.float64)
-    vy = df["vy"].to_numpy(np.float64)
-    ax_arr = df["ax"].to_numpy(np.float64)
-    ay_arr = df["ay"].to_numpy(np.float64)
+    vx = df["vx_si" if use_si else "vx"].to_numpy(np.float64)
+    vy = df["vy_si" if use_si else "vy"].to_numpy(np.float64)
+    ax_arr = df[fields["ax"]].to_numpy(np.float64)
+    ay_arr = df[fields["ay"]].to_numpy(np.float64)
+    speed_mag = df[fields["speed"]].to_numpy(np.float64)
+    acc_mag = df[fields["acceleration"]].to_numpy(np.float64)
     y, vy, ay_arr = _flip_y_for_image_coords(y, vy, ay_arr)
     if use_si:
         x = x * m_per_px
         y = y * m_per_px
-        velocity_scale = velocity_scale * m_per_px
-        acc_scale_draw = acc_scale_draw * m_per_px
+
+    x_span = float(np.ptp(x)) or 1.0
+    y_span = float(np.ptp(y)) or 1.0
+    axis_span = max(x_span, y_span, 1e-6)
+    v_p98 = p98_positive(speed_mag)
+    a_p98 = p98_positive(acc_mag)
+    shared_p98 = max(v_p98, a_p98)
+
+    _, _ = normalized_quiver_components(vx, vy, speed_mag, p98=shared_p98, axis_span=axis_span)
+    target_len = axis_span * 0.035
+    if velocity_scale is None:
+        velocity_scale = target_len / max(v_p98, 1e-9) * dt_s
+    acc_scale_draw = acceleration_scale if acceleration_scale != 0.018 else target_len / max(a_p98, 1e-9)
 
     fig = Figure(figsize=figsize, dpi=dpi)
     ax = fig.add_subplot(111)
@@ -398,11 +227,12 @@ def create_full_vector_map_figure(
         edgecolors="white", linewidths=point_edge_width,
     )
 
-    # --- 2) Acceleration (bottom layer) ---
-    tax = x + ax_arr * acc_scale_draw
-    tay = y + ay_arr * acc_scale_draw
-    a_angle = np.arctan2(ay_arr, ax_arr)
-    a_body_len = np.hypot(ax_arr * acc_scale_draw, ay_arr * acc_scale_draw)
+    # --- 2) Acceleration (bottom layer, normalized length) ---
+    aqx, aqy = normalized_quiver_components(ax_arr, ay_arr, acc_mag, p98=shared_p98, axis_span=axis_span)
+    tax = x + aqx
+    tay = y + aqy
+    a_angle = np.arctan2(aqy, aqx)
+    a_body_len = np.hypot(aqx, aqy)
     a_head_len = np.where(a_body_len > 1e-6, a_body_len * 0.22, 0.0)
     al_a, ar_a = a_angle + np.pi - 0.38, a_angle + np.pi + 0.38
     lax = tax + a_head_len * np.cos(al_a)
@@ -420,16 +250,17 @@ def create_full_vector_map_figure(
         acc_segments,
         colors=acc_colors,
         linewidths=acceleration_linewidth,
-        alpha=acceleration_alpha,
+        alpha=max(acceleration_alpha, 0.55),
         capstyle="round",
     )
     ax.add_collection(lc_acc)
 
-    # --- 3) Velocity on top ---
-    tx = x + vx * velocity_scale
-    ty = y + vy * velocity_scale
-    angle = np.arctan2(vy, vx)
-    body_len = np.hypot(vx * velocity_scale, vy * velocity_scale)
+    # --- 3) Velocity on top (faint when paired with acceleration) ---
+    vqx, vqy = normalized_quiver_components(vx, vy, speed_mag, p98=shared_p98, axis_span=axis_span)
+    tx = x + vqx
+    ty = y + vqy
+    angle = np.arctan2(vqy, vqx)
+    body_len = np.hypot(vqx, vqy)
     head_len = np.where(body_len > 1e-6, body_len * 0.22, 0.0)
     al, ar = angle + np.pi - 0.38, angle + np.pi + 0.38
     lx = tx + head_len * np.cos(al)
@@ -443,11 +274,13 @@ def create_full_vector_map_figure(
     ])
     vel_segments = np.transpose(vel_segments, (0, 2, 1, 3)).reshape(-1, 2, 2)
     vel_colors = np.array([index_colors[i] for i in df["index"] for _ in range(3)])
+    from motionanalyzer.vector_map_viz import QUIVER_ALPHA_VELOCITY_FAINT
+
     lc_vel = LineCollection(
         vel_segments,
         colors=vel_colors,
-        linewidths=velocity_linewidth,
-        alpha=velocity_alpha,
+        linewidths=max(velocity_linewidth * 0.45, 0.2),
+        alpha=min(velocity_alpha, QUIVER_ALPHA_VELOCITY_FAINT + 0.02),
         capstyle="round",
     )
     ax.add_collection(lc_vel)
@@ -460,20 +293,20 @@ def create_full_vector_map_figure(
         crack_prob = float(risk_row["crack_risk"])
         label_suffix = " (physics)"
     else:
-        risk_row = df.loc[df["acceleration"].idxmax()]
+        risk_row = df.loc[df[fields["acceleration"]].idxmax()]
         ann_x = float(risk_row["x"]) * m_per_px
         ann_y = -float(risk_row["y"]) * m_per_px
         crack_prob = _crack_probability_heuristic(
-            float(risk_row["acceleration"]),
-            float(df["acceleration"].max()),
+            float(risk_row[fields["acceleration"]]),
+            float(df[fields["acceleration"]].max()),
             float(risk_row["curvature_like"]),
             float(df["curvature_like"].max()),
         )
         label_suffix = ""
 
     accel_label = (
-        f"{float(risk_row['acceleration_si']) / 1000.0:.6f} {acc_unit}"
-        if use_si and "acceleration_si" in risk_row.index
+        f"{float(risk_row[fields['acceleration']]):.6f} {acc_unit}"
+        if use_si
         else f"{float(risk_row['acceleration']):.1f} {acc_unit}"
     )
     offset = 30 * m_per_px
