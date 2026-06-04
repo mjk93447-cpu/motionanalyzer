@@ -1,4 +1,4 @@
-"""Vector map visualization with velocity, acceleration, and impact analysis."""
+﻿"""Vector map visualization with velocity, acceleration, and impact analysis."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ def _index_color_map(unique_indices: np.ndarray) -> dict[int, tuple[float, float
     out = {}
     for i, idx in enumerate(unique_indices):
         hue = (i * _HUE_STEP) % 1.0
-        r, g, b = mcolors.hsv_to_rgb((hue, 0.88, 0.96))
+        r, g, b = mcolors.hsv_to_rgb((hue, 0.78, 0.68))
         out[int(idx)] = (r, g, b, 1.0)
     return out
 
@@ -36,7 +36,9 @@ def _index_color_map(unique_indices: np.ndarray) -> dict[int, tuple[float, float
 def _complement_rgba(rgba: tuple[float, float, float, float]) -> tuple[float, float, float, float]:
     """Return complementary color (1-R, 1-G, 1-B) for distinction from base color."""
     r, g, b, a = rgba
-    return (1.0 - r, 1.0 - g, 1.0 - b, a)
+    comp = np.array([1.0 - r, 1.0 - g, 1.0 - b], dtype=float)
+    comp = np.clip(comp * 0.72, 0.06, 0.72)
+    return (float(comp[0]), float(comp[1]), float(comp[2]), a)
 
 
 def _arrow_line_segments(
@@ -177,6 +179,7 @@ def create_full_vector_map_figure(
     fields = motion_field_names(use_si)
     vel_unit = fields["speed_unit"]
     acc_unit = fields["accel_unit"]
+    display_scale = float(fields.get("display_scale", 1000.0)) if use_si else 0.0
 
     if "dt_s" in df.columns:
         dt_s = float(df["dt_s"].median())
@@ -185,7 +188,7 @@ def create_full_vector_map_figure(
     if dt_s <= 0:
         dt_s = 1.0 / fps
 
-    m_per_px = float(meters_per_pixel) if use_si else 1.0
+    unit_per_px = float(meters_per_pixel) * display_scale if use_si else 1.0
     x = df["x"].to_numpy(np.float64)
     y = df["y"].to_numpy(np.float64)
     vx = df["vx_si" if use_si else "vx"].to_numpy(np.float64)
@@ -194,10 +197,17 @@ def create_full_vector_map_figure(
     ay_arr = df[fields["ay"]].to_numpy(np.float64)
     speed_mag = df[fields["speed"]].to_numpy(np.float64)
     acc_mag = df[fields["acceleration"]].to_numpy(np.float64)
+    if use_si:
+        vx = vx * display_scale
+        vy = vy * display_scale
+        ax_arr = ax_arr * display_scale
+        ay_arr = ay_arr * display_scale
+        speed_mag = speed_mag * display_scale
+        acc_mag = acc_mag * display_scale
     y, vy, ay_arr = _flip_y_for_image_coords(y, vy, ay_arr)
     if use_si:
-        x = x * m_per_px
-        y = y * m_per_px
+        x = x * unit_per_px
+        y = y * unit_per_px
 
     x_span = float(np.ptp(x)) or 1.0
     y_span = float(np.ptp(y)) or 1.0
@@ -288,14 +298,14 @@ def create_full_vector_map_figure(
     # --- Crack risk ---
     if "crack_risk" in df.columns:
         risk_row = df.loc[df["crack_risk"].idxmax()]
-        ann_x = float(risk_row["x"]) * m_per_px
-        ann_y = -float(risk_row["y"]) * m_per_px
+        ann_x = float(risk_row["x"]) * unit_per_px
+        ann_y = -float(risk_row["y"]) * unit_per_px
         crack_prob = float(risk_row["crack_risk"])
         label_suffix = " (physics)"
     else:
         risk_row = df.loc[df[fields["acceleration"]].idxmax()]
-        ann_x = float(risk_row["x"]) * m_per_px
-        ann_y = -float(risk_row["y"]) * m_per_px
+        ann_x = float(risk_row["x"]) * unit_per_px
+        ann_y = -float(risk_row["y"]) * unit_per_px
         crack_prob = _crack_probability_heuristic(
             float(risk_row[fields["acceleration"]]),
             float(df[fields["acceleration"]].max()),
@@ -305,11 +315,11 @@ def create_full_vector_map_figure(
         label_suffix = ""
 
     accel_label = (
-        f"{float(risk_row[fields['acceleration']]):.6f} {acc_unit}"
+        f"{float(risk_row[fields['acceleration']]) * display_scale:.6f} {acc_unit}"
         if use_si
         else f"{float(risk_row['acceleration']):.1f} {acc_unit}"
     )
-    offset = 30 * m_per_px
+    offset = 30 * unit_per_px
     ax.annotate(
         f"max crack risk point\naccel={accel_label}\nP(crack)={crack_prob:.3f}{label_suffix}",
         xy=(ann_x, ann_y),
@@ -321,11 +331,11 @@ def create_full_vector_map_figure(
     ax.plot(ann_x, ann_y, "o", markersize=4, color="#8b0000", alpha=0.9)
 
     # --- Labels and legend ---
-    ax.set_xlabel("X (m)" if use_si else "X (px)", fontsize=10)
-    ax.set_ylabel("Y (m)" if use_si else "Y (px)", fontsize=10)
+    ax.set_xlabel("X (mm)", fontsize=10)
+    ax.set_ylabel("Y (mm)", fontsize=10)
     n_frames = int(df["frame"].nunique())
     n_points = int(df["index"].nunique())
-    scale_note = f" | scale={meters_per_pixel:.2e} m/px" if use_si and meters_per_pixel else ""
+    scale_note = f" | scale={meters_per_pixel:.2e} m/pixel" if use_si and meters_per_pixel else " | metric calibration required"
     ax.set_title(
         f"Vector Map: points & arrows by index — velocity ({vel_unit}) & acceleration ({acc_unit}){scale_note} | "
         f"{n_frames} frames, {n_points} points | FPS={fps:.1f}",
@@ -353,6 +363,7 @@ def create_vector_map_figure(
     vectors_csv: Path,
     fps: float,
     *,
+    meters_per_pixel: float | None = None,
     figsize: tuple[float, float] = (14, 10),
     dpi: int = 100,
     point_size: float = 0.2,
@@ -383,12 +394,13 @@ def create_vector_map_figure(
 
     dt_s = 1.0 / fps
 
-    x = df["x"].to_numpy(np.float64)
-    y = df["y"].to_numpy(np.float64)
-    vx = df["vx"].to_numpy(np.float64)
-    vy = df["vy"].to_numpy(np.float64)
-    ax_arr = df["ax"].to_numpy(np.float64)
-    ay_arr = df["ay"].to_numpy(np.float64)
+    metric_scale = float(meters_per_pixel) * 1000.0 if meters_per_pixel and float(meters_per_pixel) > 0 else 1.0
+    x = df["x"].to_numpy(np.float64) * metric_scale
+    y = df["y"].to_numpy(np.float64) * metric_scale
+    vx = df["vx"].to_numpy(np.float64) * metric_scale
+    vy = df["vy"].to_numpy(np.float64) * metric_scale
+    ax_arr = df["ax"].to_numpy(np.float64) * metric_scale
+    ay_arr = df["ay"].to_numpy(np.float64) * metric_scale
     y, vy, ay_arr = _flip_y_for_image_coords(y, vy, ay_arr)
 
     ax.scatter(
@@ -409,9 +421,9 @@ def create_vector_map_figure(
     )
 
     max_acc_row = df.loc[df["acceleration"].idxmax()]
-    max_x = float(max_acc_row["x"])
-    max_y = -float(max_acc_row["y"])
-    max_acc = float(max_acc_row["acceleration"])
+    max_x = float(max_acc_row["x"]) * metric_scale
+    max_y = -float(max_acc_row["y"]) * metric_scale
+    max_acc = float(max_acc_row["acceleration"]) * metric_scale
     max_curv = float(df["curvature_like"].max())
     crack_prob = _crack_probability_heuristic(
         max_acc,
@@ -420,7 +432,7 @@ def create_vector_map_figure(
         max_curv,
     )
     ax.annotate(
-        f"max impact\naccel={max_acc:.1f} px/s²\nP(crack)≈{crack_prob:.2f}",
+        f"max impact\naccel={max_acc:.1f} mm/s^2\nP(crack)={crack_prob:.2f}",
         xy=(max_x, max_y),
         xytext=(max_x + 30, max_y + 30),
         fontsize=8,
@@ -429,18 +441,18 @@ def create_vector_map_figure(
     )
     ax.plot(max_x, max_y, "o", markersize=4, color="#8b0000", alpha=0.9)
 
-    ax.set_xlabel("X (px)", fontsize=10)
-    ax.set_ylabel("Y (px)", fontsize=10)
+    ax.set_xlabel("X (mm)", fontsize=10)
+    ax.set_ylabel("Y (mm)", fontsize=10)
     ax.set_title(
-        f"Vector Map: velocity (px/s) & acceleration (px/s²) | dt={dt_s:.4f} s",
+        f"Vector Map: velocity (mm/s) & acceleration (mm/s^2) | dt={dt_s:.4f} s",
         fontsize=10,
     )
     ax.grid(True, alpha=0.25, linestyle="--")
 
     from matplotlib.lines import Line2D
     legend_elements = [
-        Line2D([0], [0], marker="o", color="w", markerfacecolor=velocity_color, markersize=8, label="velocity (px/s)"),
-        Line2D([0], [0], marker="o", color="w", markerfacecolor=acceleration_color, markersize=8, label="acceleration (px/s²)"),
+        Line2D([0], [0], marker="o", color="w", markerfacecolor=velocity_color, markersize=8, label="velocity (mm/s)"),
+        Line2D([0], [0], marker="o", color="w", markerfacecolor=acceleration_color, markersize=8, label="acceleration (mm/s^2)"),
     ]
     ax.legend(handles=legend_elements, loc="upper right", fontsize=9)
     fig.tight_layout()
@@ -594,3 +606,4 @@ def plot_frame_metrics(
     plt.savefig(output_image, dpi=dpi, bbox_inches="tight")
     plt.close()
     return output_image
+

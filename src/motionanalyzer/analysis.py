@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import dataclasses
 import json
@@ -186,7 +186,7 @@ def compute_vectors(
 ) -> pd.DataFrame:
     """
     Compute velocity and acceleration from position time series.
-    Units: v in px/s, a in px/s². If meters_per_pixel is set, add SI columns (m/s, m/s²).
+    Raw columns are retained for compatibility; official display units are mm, mm/s, and mm/s^2 when meters_per_pixel is set.
     When frame_times is provided, uses per-frame dt from recorded extraction timestamps.
     """
     work = df.copy()
@@ -338,10 +338,10 @@ def export_analysis(vectors: pd.DataFrame, summary: AnalysisSummary, output_dir:
         json.dumps(asdict(summary), ensure_ascii=True, indent=2), encoding="utf-8"
     )
 
-    # Summary txt with units (px/s, px/s² and SI when meters_per_pixel set)
+    # Summary txt keeps raw diagnostics and adds official metric values when calibrated.
     summary_txt_path = output_dir / "summary.txt"
     txt_lines = [
-        "motionanalyzer summary (units: speed/accel in px/s, px/s²; SI when meters_per_pixel set)",
+        "motionanalyzer summary (official display units: mm, mm/s, mm/s^2 when meters_per_pixel is set)",
         f"fps={summary.fps}",
         f"dt_s={summary.median_dt_s if summary.median_dt_s is not None else 1.0/summary.fps:.6f}",
         f"effective_fps={summary.effective_fps if summary.effective_fps is not None else ''}",
@@ -469,3 +469,4 @@ def load_summary(summary_path: Path) -> AnalysisSummary:
     field_names = {f.name for f in dataclasses.fields(AnalysisSummary)}
     kwargs = {k: payload[k] for k in payload if k in field_names}
     return AnalysisSummary(**kwargs)
+

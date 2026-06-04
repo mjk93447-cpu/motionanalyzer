@@ -1,24 +1,22 @@
-"""Shared helpers for 2D vector map visualization (SI, normalization, colormaps)."""
+"""Shared helpers for 2D vector map visualization (metric-mm display)."""
 
 from __future__ import annotations
-
-from typing import Any
 
 import numpy as np
 import pandas as pd
 
-# Matplotlib colormap names tuned for white backgrounds (avoid bright yellow highs).
-CMAP_FRAME = "cividis"
-CMAP_SPEED = "cividis"
-CMAP_ACCEL = "magma"
+# Colormaps tuned for white backgrounds. Avoid very bright yellow/white highs.
+CMAP_FRAME = "Blues"
+CMAP_SPEED = "viridis"
+CMAP_ACCEL = "Reds"
 
 P98_PERCENTILE = 98.0
-QUIVER_ALPHA_VELOCITY = 0.78
-QUIVER_ALPHA_ACCEL = 0.82
-QUIVER_ALPHA_VELOCITY_FAINT = 0.16
-QUIVER_WIDTH_VELOCITY = 0.0022
-QUIVER_WIDTH_ACCEL = 0.0024
-QUIVER_WIDTH_VELOCITY_FAINT = 0.0009
+QUIVER_ALPHA_VELOCITY = 0.72
+QUIVER_ALPHA_ACCEL = 0.92
+QUIVER_ALPHA_VELOCITY_FAINT = 0.08
+QUIVER_WIDTH_VELOCITY = 0.0020
+QUIVER_WIDTH_ACCEL = 0.0033
+QUIVER_WIDTH_VELOCITY_FAINT = 0.0007
 
 
 def use_si_columns(df: pd.DataFrame, meters_per_pixel: float | None) -> bool:
@@ -30,23 +28,27 @@ def use_si_columns(df: pd.DataFrame, meters_per_pixel: float | None) -> bool:
     )
 
 
-def motion_field_names(use_si: bool) -> dict[str, str]:
+def motion_field_names(use_si: bool) -> dict[str, str | float]:
     if use_si:
         return {
             "speed": "speed_si",
             "ax": "ax_si",
             "ay": "ay_si",
             "acceleration": "acceleration_si",
-            "speed_unit": "m/s",
-            "accel_unit": "m/s²",
+            "position_unit": "mm",
+            "speed_unit": "mm/s",
+            "accel_unit": "mm/s^2",
+            "display_scale": 1000.0,
         }
     return {
         "speed": "speed",
         "ax": "ax",
         "ay": "ay",
         "acceleration": "acceleration",
-        "speed_unit": "px/s",
-        "accel_unit": "px/s²",
+        "position_unit": "mm",
+        "speed_unit": "mm/s",
+        "accel_unit": "mm/s^2",
+        "display_scale": 0.0,
     }
 
 
