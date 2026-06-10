@@ -134,21 +134,58 @@ def _run_draem(
     normed_df = _normalize_ml_features(features_df, labels, feature_cols)
     normal_array = normed_df.loc[normal_mask, feature_cols].to_numpy(dtype=np.float32)
 
-    log(f"Training DRAEM on {len(normal_array)} normal samples (crack-like synthetic anomalies enabled)...")
-    progress()
+    train_mode = str(kwargs.get("train_mode", "scratch")).lower()
+    draem_model_path = kwargs.get("draem_model_path")
+    learning_rate = float(kwargs.get("learning_rate", 1e-3))
 
-    model = DRAEMAnomalyDetector(
-        input_dim=len(feature_cols),
-        hidden_dims=kwargs.get("hidden_dims", [64, 32, 16]),
-        latent_dim=kwargs.get("latent_dim", 8),
-        learning_rate=kwargs.get("learning_rate", 1e-3),
-        batch_size=batch_size,
-        use_discriminative=kwargs.get("use_discriminative", True),
-        synthetic_noise_std=kwargs.get("synthetic_noise_std", 0.3),
-        discriminator_weight=kwargs.get("discriminator_weight", 0.5),
-        weight_decay=kwargs.get("weight_decay", 1e-5),
-    )
-    model.fit(normal_array, epochs=epochs, feature_names=feature_cols)
+    if train_mode == "refine" and draem_model_path:
+        load_path = Path(draem_model_path)
+        if not load_path.exists():
+            return {
+                "success": False,
+                "message": f"Pretrained DRAEM not found: {load_path}\nTrain scratch first or set draem_model_path.",
+            }
+        log(f"Refining DRAEM from {load_path} with {len(normal_array)} normal samples for {epochs} epoch(s)...")
+        progress()
+        model = DRAEMAnomalyDetector(
+            input_dim=len(feature_cols),
+            hidden_dims=kwargs.get("hidden_dims", [64, 32, 16]),
+            latent_dim=kwargs.get("latent_dim", 8),
+            learning_rate=learning_rate,
+            batch_size=batch_size,
+            use_discriminative=kwargs.get("use_discriminative", True),
+            synthetic_noise_std=kwargs.get("synthetic_noise_std", 0.3),
+            discriminator_weight=kwargs.get("discriminator_weight", 0.5),
+            weight_decay=kwargs.get("weight_decay", 1e-5),
+        )
+        try:
+            model.load(load_path)
+        except Exception as exc:
+            return {"success": False, "message": f"Failed to load DRAEM checkpoint: {exc}"}
+        if int(getattr(model, "input_dim", len(feature_cols))) != len(feature_cols):
+            return {
+                "success": False,
+                "message": (
+                    f"Feature dimension mismatch: pretrained={model.input_dim}, data={len(feature_cols)}. "
+                    "Use the same feature_cols as the source bundle."
+                ),
+            }
+        model.fit(normal_array, epochs=epochs, feature_names=feature_cols)
+    else:
+        log(f"Training DRAEM on {len(normal_array)} normal samples (crack-like synthetic anomalies enabled)...")
+        progress()
+        model = DRAEMAnomalyDetector(
+            input_dim=len(feature_cols),
+            hidden_dims=kwargs.get("hidden_dims", [64, 32, 16]),
+            latent_dim=kwargs.get("latent_dim", 8),
+            learning_rate=learning_rate,
+            batch_size=batch_size,
+            use_discriminative=kwargs.get("use_discriminative", True),
+            synthetic_noise_std=kwargs.get("synthetic_noise_std", 0.3),
+            discriminator_weight=kwargs.get("discriminator_weight", 0.5),
+            weight_decay=kwargs.get("weight_decay", 1e-5),
+        )
+        model.fit(normal_array, epochs=epochs, feature_names=feature_cols)
 
     # Threshold optimization: use optimize_threshold_for_precision_recall if crack data available
     crack_mask = ~normal_mask
