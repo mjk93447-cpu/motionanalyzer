@@ -14,15 +14,15 @@ from matplotlib.figure import Figure
 # Dark gradients for white GUI backgrounds — avoid pale low stops that wash out.
 CMAP_FRAME = LinearSegmentedColormap.from_list(
     "vector_frame",
-    ["#3d6f94", "#245a7a", "#163d58", "#0a1a2e"],
+    ["#123c69", "#4c1d95", "#9d174d", "#7f1d1d"],
 )
 CMAP_SPEED = LinearSegmentedColormap.from_list(
     "vector_speed",
-    ["#2a8f72", "#1d6b58", "#124a45", "#0b2538"],
+    ["#075f5f", "#047857", "#1d4ed8", "#5b21b6"],
 )
 CMAP_ACCEL = LinearSegmentedColormap.from_list(
     "vector_accel",
-    ["#c4553f", "#9a3828", "#6b2218", "#3a0c10"],
+    ["#9a3412", "#b91c1c", "#6d28d9", "#111827"],
 )
 
 P98_PERCENTILE = 98.0
@@ -32,8 +32,17 @@ QUIVER_ALPHA_VELOCITY = 0.88
 QUIVER_ALPHA_ACCEL = 0.9
 QUIVER_ALPHA_VELOCITY_FAINT = 0.22
 QUIVER_WIDTH_VELOCITY = 0.0024
-QUIVER_WIDTH_ACCEL = 0.0028
+QUIVER_WIDTH_ACCEL = 0.0015
 QUIVER_WIDTH_VELOCITY_FAINT = 0.0010
+POINTS_PANEL_MARKER_SIZE = 1.75
+VELOCITY_BACKGROUND_MARKER_SIZE = 0.75
+VELOCITY_TAIL_MARKER_SIZE = 4.5
+VELOCITY_CURRENT_MARKER_SIZE = 1.25
+ACCEL_TAIL_MARKER_SIZE = 4.0
+ACCEL_HIGHLIGHT_MARKER_SIZE = 18.0
+ACCEL_QUIVER_HEADWIDTH = 2.4
+ACCEL_QUIVER_HEADLENGTH = 3.2
+ACCEL_QUIVER_HEADAXISLENGTH = 2.8
 
 # Arrow length = (mm/s)·Δt (mm); color = speed (mm/s).
 VELOCITY_LENGTH_LABEL = "length = v·Δt (mm),  v in mm/s,  Δt = frame interval (s)"
@@ -339,7 +348,7 @@ def render_points_panel(fig: Figure, ax: Any, data: VectorMapRenderData) -> None
         c=data.df["frame"],
         cmap=CMAP_FRAME,
         norm=data.frame_norm,
-        s=7,
+        s=POINTS_PANEL_MARKER_SIZE,
         alpha=0.9,
         edgecolors="#1f2937",
         linewidths=0.15,
@@ -365,7 +374,7 @@ def render_velocity_panel(fig: Figure, ax: Any, data: VectorMapRenderData) -> No
         c=data.df["frame"],
         cmap=CMAP_FRAME,
         norm=data.frame_norm,
-        s=3,
+        s=VELOCITY_BACKGROUND_MARKER_SIZE,
         alpha=0.18,
         edgecolors="none",
         zorder=1,
@@ -376,7 +385,7 @@ def render_velocity_panel(fig: Figure, ax: Any, data: VectorMapRenderData) -> No
         data.vel_tail_y,
         data.moving["index"].to_numpy(int),
         data.index_colors,
-        size=18.0,
+        size=VELOCITY_TAIL_MARKER_SIZE,
     )
     q = ax.quiver(
         data.vel_tail_x,
@@ -396,7 +405,7 @@ def render_velocity_panel(fig: Figure, ax: Any, data: VectorMapRenderData) -> No
         data.moving["plot_x_mm"],
         data.moving["plot_y_mm"],
         c=data.moving["index"].map(data.index_colors),
-        s=5,
+        s=VELOCITY_CURRENT_MARKER_SIZE,
         alpha=0.55,
         edgecolors="none",
         zorder=2,
@@ -447,7 +456,7 @@ def render_acceleration_panel(fig: Figure, ax: Any, data: VectorMapRenderData) -
         data.vel_tail_y,
         data.moving["index"].to_numpy(int),
         data.index_colors,
-        size=16.0,
+        size=ACCEL_TAIL_MARKER_SIZE,
     )
     ax.quiver(
         data.vel_tail_x,
@@ -474,6 +483,9 @@ def render_acceleration_panel(fig: Figure, ax: Any, data: VectorMapRenderData) -
         scale_units="xy",
         scale=1,
         width=QUIVER_WIDTH_ACCEL,
+        headwidth=ACCEL_QUIVER_HEADWIDTH,
+        headlength=ACCEL_QUIVER_HEADLENGTH,
+        headaxislength=ACCEL_QUIVER_HEADAXISLENGTH,
         alpha=QUIVER_ALPHA_ACCEL,
         zorder=4,
     )
@@ -483,7 +495,7 @@ def render_acceleration_panel(fig: Figure, ax: Any, data: VectorMapRenderData) -
     ax.scatter(
         [hottest["plot_x_mm"]],
         [hottest["plot_y_mm"]],
-        s=70,
+        s=ACCEL_HIGHLIGHT_MARKER_SIZE,
         c="#7f1d1d",
         edgecolors="#111111",
         linewidths=0.9,
