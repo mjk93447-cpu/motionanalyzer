@@ -170,7 +170,13 @@ def _run_draem(
                     "Use the same feature_cols as the source bundle."
                 ),
             }
-        model.fit(normal_array, epochs=epochs, feature_names=feature_cols)
+        model.fit(
+            normal_array,
+            epochs=epochs,
+            feature_names=feature_cols,
+            progress_callback=kwargs.get("epoch_progress_callback"),
+            stop_callback=kwargs.get("stop_callback"),
+        )
     else:
         log(f"Training DRAEM on {len(normal_array)} normal samples (crack-like synthetic anomalies enabled)...")
         progress()
@@ -185,7 +191,13 @@ def _run_draem(
             discriminator_weight=kwargs.get("discriminator_weight", 0.5),
             weight_decay=kwargs.get("weight_decay", 1e-5),
         )
-        model.fit(normal_array, epochs=epochs, feature_names=feature_cols)
+        model.fit(
+            normal_array,
+            epochs=epochs,
+            feature_names=feature_cols,
+            progress_callback=kwargs.get("epoch_progress_callback"),
+            stop_callback=kwargs.get("stop_callback"),
+        )
 
     # Threshold optimization: use optimize_threshold_for_precision_recall if crack data available
     crack_mask = ~normal_mask

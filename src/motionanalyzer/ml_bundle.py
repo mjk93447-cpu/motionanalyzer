@@ -117,5 +117,12 @@ def transform_with_bundle(
     """Return normalized feature matrix columns in manifest order."""
     feature_cols: list[str] = manifest["feature_cols"]
     norm_stats: dict[str, dict[str, float]] = manifest["norm_stats"]
+    if manifest.get("feature_enrichment_version") == "motion_geometry_v1":
+        try:
+            from bending_inspector.inspection_lab.motion_geometry_features import add_motion_geometry_features
+
+            features_df = add_motion_geometry_features(features_df)
+        except Exception:
+            pass
     normed = apply_norm_stats(features_df, norm_stats, feature_cols)
     return normed[feature_cols].fillna(0.0)

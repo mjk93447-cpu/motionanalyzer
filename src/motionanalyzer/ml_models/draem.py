@@ -413,6 +413,8 @@ class DRAEMPyTorch(DRAEMAnomalyDetector):
         normal_data: pd.DataFrame | np.ndarray,
         epochs: int = 100,
         feature_names: list[str] | None = None,
+        progress_callback=None,
+        stop_callback=None,
     ) -> None:
         """
         Train on normal data only. If use_discriminative, add crack-like synthetic anomalies.
@@ -482,8 +484,19 @@ class DRAEMPyTorch(DRAEMAnomalyDetector):
                 self.optimizer.step()
                 total_loss += loss.item()
 
+            avg_loss = total_loss / n_batches
+            if progress_callback is not None:
+                progress_callback(
+                    {
+                        "epoch": epoch + 1,
+                        "epochs": epochs,
+                        "loss": float(avg_loss),
+                        "remaining_epochs": max(0, epochs - (epoch + 1)),
+                    }
+                )
+            if stop_callback is not None and stop_callback():
+                break
             if (epoch + 1) % 10 == 0:
-                avg_loss = total_loss / n_batches
                 print(f"Epoch {epoch+1}/{epochs}, Loss: {avg_loss:.6f}")
 
         self.is_trained = True
