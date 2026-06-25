@@ -133,8 +133,18 @@ def _run_draem(
     normal_mask = labels == 0
     normed_df = _normalize_ml_features(features_df, labels, feature_cols)
     normal_array = normed_df.loc[normal_mask, feature_cols].to_numpy(dtype=np.float32)
+    if len(normal_array) < 1:
+        return {"success": False, "message": "DRAEM requires at least 1 normal (OK) row for training."}
 
     train_mode = str(kwargs.get("train_mode", "scratch")).lower()
+    epoch_eval_callback = kwargs.get("epoch_eval_callback")
+    base_epoch_progress = kwargs.get("epoch_progress_callback")
+
+    def _combined_epoch_progress(row: dict[str, Any]) -> None:
+        if base_epoch_progress is not None:
+            base_epoch_progress(row)
+        if epoch_eval_callback is not None:
+            epoch_eval_callback(model, row)
     draem_model_path = kwargs.get("draem_model_path")
     learning_rate = float(kwargs.get("learning_rate", 1e-3))
 
@@ -174,7 +184,7 @@ def _run_draem(
             normal_array,
             epochs=epochs,
             feature_names=feature_cols,
-            progress_callback=kwargs.get("epoch_progress_callback"),
+            progress_callback=_combined_epoch_progress if base_epoch_progress or epoch_eval_callback else None,
             stop_callback=kwargs.get("stop_callback"),
         )
     else:
@@ -195,21 +205,22 @@ def _run_draem(
             normal_array,
             epochs=epochs,
             feature_names=feature_cols,
-            progress_callback=kwargs.get("epoch_progress_callback"),
+            progress_callback=_combined_epoch_progress if base_epoch_progress or epoch_eval_callback else None,
             stop_callback=kwargs.get("stop_callback"),
         )
 
     # Threshold optimization: use optimize_threshold_for_precision_recall if crack data available
     crack_mask = ~normal_mask
+    threshold_metrics: dict[str, Any] | None = None
     if crack_mask.any() and kwargs.get("optimize_threshold", True):
         crack_data = normed_df.loc[crack_mask, feature_cols]
         try:
-            thresh, metrics = model.optimize_threshold_for_precision_recall(
+            thresh, threshold_metrics = model.optimize_threshold_for_precision_recall(
                 normed_df.loc[normal_mask, feature_cols],
                 crack_data,
                 target_metric=kwargs.get("threshold_metric", "balanced"),
             )
-            log(f"Optimized threshold: {thresh:.4f} (Precision: {metrics['precision']:.3f}, Recall: {metrics['recall']:.3f}, F1: {metrics['f1']:.3f})")
+            log(f"Optimized threshold: {thresh:.4f} (Precision: {threshold_metrics['precision']:.3f}, Recall: {threshold_metrics['recall']:.3f}, F1: {threshold_metrics['f1']:.3f})")
         except Exception as e:
             log(f"Threshold optimization failed, using p95: {e}")
             model.set_threshold_from_normal(
@@ -228,7 +239,16 @@ def _run_draem(
     model.save(model_path)
     log(f"Model saved to: {model_path}")
 
-    result: dict[str, Any] = {"success": True, "message": "DRAEM training complete", "model_path": model_path}
+    draem_threshold = float(model.reconstruction_error_threshold or 0.0)
+    result: dict[str, Any] = {
+        "success": True,
+        "message": "DRAEM training complete",
+        "model_path": model_path,
+        "draem_threshold": draem_threshold,
+        "reconstruction_error_threshold": draem_threshold,
+    }
+    if threshold_metrics:
+        result["threshold_metrics"] = threshold_metrics
 
     if crack_mask.any():
         crack_array = normed_df.loc[crack_mask, feature_cols].to_numpy(dtype=np.float32)
