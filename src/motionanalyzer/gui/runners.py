@@ -209,6 +209,10 @@ def _run_draem(
             stop_callback=kwargs.get("stop_callback"),
         )
 
+    status_callback = kwargs.get("status_callback")
+    if callable(status_callback):
+        status_callback("threshold_tuning")
+
     # Threshold optimization: use optimize_threshold_for_precision_recall if crack data available
     crack_mask = ~normal_mask
     threshold_metrics: dict[str, Any] | None = None
