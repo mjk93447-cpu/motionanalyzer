@@ -49,11 +49,11 @@ def _read_points(path: Path) -> tuple[int, set[int], list[str]]:
             errors.append(f"{path.name}:{i} malformed row")
             continue
         try:
-            int(cols[0])
-            int(cols[1])
+            float(cols[0])
+            float(cols[1])
             idx = int(cols[2])
         except ValueError:
-            errors.append(f"{path.name}:{i} non-integer value")
+            errors.append(f"{path.name}:{i} invalid numeric value")
             continue
         indices.add(idx)
         point_count += 1

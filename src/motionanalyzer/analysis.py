@@ -63,7 +63,7 @@ def _read_single_frame(path: Path, frame_idx: int) -> pd.DataFrame:
     if lines[0].strip() != "# x,y,index":
         raise ValueError(f"Invalid header in frame file: {path.name}")
 
-    records: list[dict[str, int]] = []
+    records: list[dict[str, int | float]] = []
     for i, line in enumerate(lines[1:], start=2):
         if not line.strip():
             continue
@@ -71,8 +71,10 @@ def _read_single_frame(path: Path, frame_idx: int) -> pd.DataFrame:
         if len(cols) != 3:
             raise ValueError(f"Malformed row {i} in {path.name}")
         try:
-            x = int(cols[0])
-            y = int(cols[1])
+            # Canonical FPCB v3 preserves sub-pixel lower-line coordinates.
+            # Legacy integer point files remain a strict subset of this form.
+            x = float(cols[0])
+            y = float(cols[1])
             idx = int(cols[2])
         except ValueError as exc:
             raise ValueError(f"Non-integer row {i} in {path.name}") from exc
